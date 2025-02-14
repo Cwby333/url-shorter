@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS urls_alias(id bigserial PRIMARY KEY, url text NOT NULL, alias text NOT NULL UNIQUE);

@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS urls_alias_alias_idx;
