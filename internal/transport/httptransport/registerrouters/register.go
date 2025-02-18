@@ -9,7 +9,7 @@ import (
 	"github.com/Cwby333/url-shorter/internal/transport/httptransport/urlrouter"
 )
 
-func New(urlService urlrouter.URLService, logger logger.Logger, cfg config.Owner, cfgLimiter config.Limiter) (*http.ServeMux, error) {
+func New(urlService urlrouter.URLService, logger logger.Logger, cfg config.Owner) (*http.ServeMux, error) {
 	const op = "internal/transports/httptransport/registerrouters/register.go/Register"
 
 	mux := http.NewServeMux()

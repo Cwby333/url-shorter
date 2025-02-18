@@ -17,8 +17,6 @@ type Config struct {
 	Database `yaml:"database" env-required:"true"`
 
 	Owner `yaml:"owner"`
-
-	Limiter `yaml:"limiter"`
 }
 
 type HTTPServer struct {
@@ -43,11 +41,6 @@ type Database struct {
 type Owner struct {
 	Username string `yaml:"username" env-required:"true"`
 	Password string `yaml:"password" env-required:"true"`
-}
-
-type Limiter struct {
-	RateLimiterDelay time.Duration `yaml:"rate-limiter-delay"`
-	RateLimiterLimit int           `yaml:"rate-limiter-limit"`
 }
 
 func Load(env string) Config {
@@ -90,11 +83,6 @@ func Load(env string) Config {
 				MaxConn:  20,
 				MinConn:  5,
 				SslMode:  "disable",
-			},
-
-			Limiter: Limiter{
-				RateLimiterDelay: time.Duration(time.Second * 60),
-				RateLimiterLimit: 30,
 			},
 		}
 

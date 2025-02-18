@@ -17,10 +17,10 @@ type Server struct {
 	ErrCh  chan error
 }
 
-func New(ctx context.Context, cfg config.HTTPServer, urlService urlrouter.URLService, logger logger.Logger, cfgOwner config.Owner, cfgLimiter config.Limiter) (Server, error) {
+func New(ctx context.Context, cfg config.HTTPServer, urlService urlrouter.URLService, logger logger.Logger, cfgOwner config.Owner) (Server, error) {
 	const op = "transport/http/httpserver/New"
 
-	mux, err := registerrouters.New(urlService, logger, cfgOwner, cfgLimiter)
+	mux, err := registerrouters.New(urlService, logger, cfgOwner)
 
 	if err != nil {
 		return Server{}, fmt.Errorf("%s:%w", op, err)

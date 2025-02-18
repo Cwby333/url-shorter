@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Cwby333/url-shorter/internal/config"
-	"github.com/Cwby333/url-shorter/internal/domain/urls"
+	"github.com/Cwby333/url-shorter/internal/entity/urls"
 	storageErrors "github.com/Cwby333/url-shorter/internal/repository/errors"
 	"github.com/Cwby333/url-shorter/internal/repository/lib/dsn"
 

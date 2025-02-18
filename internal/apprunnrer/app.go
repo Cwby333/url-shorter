@@ -61,7 +61,7 @@ func (app App) Run() {
 		return
 	}
 
-	server, err := httpserver.New(ctx, cfg.HTTPServer, urlService, logger, cfg.Owner, cfg.Limiter)
+	server, err := httpserver.New(ctx, cfg.HTTPServer, urlService, logger, cfg.Owner)
 
 	if err != nil {
 		logger.Error("server init", slog.String("error", err.Error()))
