@@ -2,6 +2,7 @@ package apprunner
 
 import (
 	"context"
+	"log"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -38,7 +39,13 @@ func (app App) Run() {
 		cancel()
 	}()
 
-	cfg := config.Load("dev")
+	cfg, err := config.Load("dev")
+
+	if err != nil {
+		log.Printf("config error: %v", err.Error())
+
+		return
+	}
 
 	logger := logger.New(cfg.Env)
 

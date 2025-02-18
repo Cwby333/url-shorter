@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -43,11 +44,13 @@ type Owner struct {
 	Password string `yaml:"password" env-required:"true"`
 }
 
-func Load(env string) Config {
+func Load(env string) (Config, error) {
+	const op = "internal/config/Load"
+	
 	err := godotenv.Load()
 
 	if err != nil {
-		log.Fatal(err)
+		return Config{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	var configPath string
@@ -86,7 +89,7 @@ func Load(env string) Config {
 			},
 		}
 
-		return cfg
+		return cfg, nil
 	}
 
 	cfg := Config{}
@@ -94,10 +97,8 @@ func Load(env string) Config {
 	err = cleanenv.ReadConfig(configPath, &cfg)
 
 	if err != nil {
-		log.Fatal(err)
+		return Config{}, fmt.Errorf("%s: %w", op, err)
 	}
 
-	cfg.SslMode = "disable"
-
-	return cfg
+	return cfg, nil
 }
