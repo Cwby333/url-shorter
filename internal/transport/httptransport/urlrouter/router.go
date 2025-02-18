@@ -21,7 +21,7 @@ type URLService interface {
 }
 
 type Router struct {
-	mu *sync.RWMutex
+	mu         *sync.RWMutex
 	urlService URLService
 	logger     logger.Logger
 	Router     *http.ServeMux
@@ -38,7 +38,7 @@ func New(service URLService, logger logger.Logger, owner config.Owner) (*Router,
 	}
 
 	return &Router{
-		mu: &sync.RWMutex{},
+		mu:         &sync.RWMutex{},
 		urlService: service,
 		logger:     logger,
 		Router:     http.NewServeMux(),

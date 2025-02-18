@@ -46,7 +46,7 @@ func (service URLService) SaveAlias(ctx context.Context, url, alias string) (int
 	res, err := service.urlRepository.SaveAlias(ctx, url, alias)
 
 	if err != nil {
-		return res, fmt.Errorf("%s:%w", op, err)
+		return res, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return res, nil
@@ -58,7 +58,7 @@ func (service URLService) GetURL(ctx context.Context, alias string) (string, err
 	res, err := service.urlRepository.GetURL(ctx, alias)
 
 	if err != nil {
-		return "", fmt.Errorf("%s:%w", op, err)
+		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
 	return res, nil
@@ -70,7 +70,7 @@ func (service URLService) DeleteURL(ctx context.Context, alias string) error {
 	err := service.urlRepository.DeleteURL(ctx, alias)
 
 	if err != nil {
-		return fmt.Errorf("%s:%w", op, err)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	return nil

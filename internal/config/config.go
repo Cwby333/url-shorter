@@ -46,7 +46,7 @@ type Owner struct {
 
 func Load(env string) (Config, error) {
 	const op = "internal/config/Load"
-	
+
 	err := godotenv.Load()
 
 	if err != nil {

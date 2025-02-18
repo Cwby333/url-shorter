@@ -15,11 +15,12 @@ func New(urlService urlrouter.URLService, logger logger.Logger, cfg config.Owner
 	mux := http.NewServeMux()
 
 	routerURLS, err := urlrouter.New(urlService, logger, cfg)
-	routerURLS.Run()
-
+	
 	if err != nil {
-		return nil, fmt.Errorf("%s:%w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+	
+	routerURLS.Run()
 
 	mux.Handle("/", http.StripPrefix("/urls", routerURLS.Router))
 
