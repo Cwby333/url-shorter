@@ -25,6 +25,10 @@ const (
 	updateURLQuery = `UPDATE urls_alias SET url = $1 WHERE alias = $2`
 )
 
+const (
+	createUserQuery = `INSERT INTO users(uuid, username, password) VALUES (uuid_generate_v4(), $1, $2) RETURNING uuid`
+)
+
 type Postgres struct {
 	pool *pgxpool.Pool
 }
@@ -217,4 +221,46 @@ func (conn Postgres) UpdateURL(ctx context.Context, newURL, alias string) error 
 	}
 
 	return nil
+}
+
+func (conn Postgres) CreateUser(ctx context.Context, username string, password string) (uuid string, err error) {
+	const op = "internal/repo/postgres/CreateUser"
+
+	tx, err := conn.pool.Begin(ctx)
+
+	if err != nil {
+		return "", fmt.Errorf("%s: %w", op, err)
+	}
+	defer func ()  {
+		var e error
+		
+		if err != nil {
+			e = tx.Rollback(ctx)
+		}else {
+			e = tx.Commit(ctx)
+		}
+
+		if err == nil && e != nil {
+			err = fmt.Errorf("%s: %w", op, err)
+		}
+	}()	
+
+	rows, err := tx.Query(ctx,createUserQuery, username, password)
+
+	if err != nil {
+		return "", fmt.Errorf("%s: %w", op, err)
+	}
+
+	var id string
+
+	for rows.Next() {
+		rows.Scan(&id)
+	}
+	rows.Close()
+	
+	if rows.CommandTag().RowsAffected() < 1 {
+		return "", fmt.Errorf("%s: %w", op, storageErrors.ErrUsernameAlreadyExists)
+	}
+
+	return id, nil
 }
