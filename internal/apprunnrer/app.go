@@ -14,6 +14,7 @@ import (
 	"github.com/Cwby333/url-shorter/internal/logger"
 	"github.com/Cwby333/url-shorter/internal/repository/postgres"
 	"github.com/Cwby333/url-shorter/internal/services/urlsservice"
+	"github.com/Cwby333/url-shorter/internal/services/usersservice"
 	"github.com/Cwby333/url-shorter/internal/transport/httptransport/httpserver"
 )
 
@@ -68,7 +69,14 @@ func (app App) Run() {
 		return
 	}
 
-	server, err := httpserver.New(ctx, cfg.HTTPServer, urlService, logger, cfg.Owner)
+	userService, err := usersservice.New(pool, logger, cfg.JWT)
+
+	if err != nil {
+		logger.Error("", slog.String("error", err.Error()))
+		return
+	}
+
+	server, err := httpserver.New(ctx, cfg.HTTPServer, urlService, logger, userService)
 
 	if err != nil {
 		logger.Error("server init", slog.String("error", err.Error()))

@@ -1,13 +1,17 @@
 package config
 
 import (
+	"errors"
 	"fmt"
-	"log"
 	"os"
 	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/joho/godotenv"
+)
+
+var (
+	ErrCantFindConfig = errors.New("cant find config")
 )
 
 type Config struct {
@@ -17,7 +21,7 @@ type Config struct {
 
 	Database `yaml:"database" env-required:"true"`
 
-	Owner `yaml:"owner"`
+	JWT `yaml:"jwt"`
 }
 
 type HTTPServer struct {
@@ -39,9 +43,19 @@ type Database struct {
 	MinConn  uint16 `yaml:"min-conn"`
 }
 
-type Owner struct {
-	Username string `yaml:"username" env-required:"true"`
-	Password string `yaml:"password" env-required:"true"`
+type JWT struct {
+	Issuer     string `yaml:"issuer" evn-required:"true"`
+	SecretKey  string `yaml:"secret-key" env-required:"true"`
+	JWTAccess  `yaml:"jwt-access" env-required:"true"`
+	JWTRefresh `yaml:"jwt-refresh" env-required:"true"`
+}
+
+type JWTAccess struct {
+	ExpiredTime string `yaml:"jwt-access-expired" env-required:"true"`
+}
+
+type JWTRefresh struct {
+	ExpiredTime string `yaml:"jwt-refresh-expired" env-required:"true"`
 }
 
 func Load(env string) (Config, error) {
@@ -54,7 +68,6 @@ func Load(env string) (Config, error) {
 	}
 
 	var configPath string
-	defaultPassword := os.Getenv("APP_DEFAULT_PASS_DB")
 
 	switch env {
 	case "local":
@@ -64,32 +77,7 @@ func Load(env string) (Config, error) {
 	}
 
 	if configPath == "" {
-		log.Println("cannot find config path, will use default params")
-
-		cfg := Config{
-			Env: "prod",
-
-			HTTPServer: HTTPServer{
-				Address:         "localhost:8080",
-				ReadTimeout:     time.Duration(time.Second * 5),
-				WriteTimeout:    time.Duration(time.Second * 5),
-				IdleTimeout:     time.Duration(time.Second * 30),
-				ShutdownTimeout: time.Duration(time.Second * 30),
-			},
-
-			Database: Database{
-				Host:     "localhost",
-				Port:     5432,
-				User:     "postgres",
-				Password: defaultPassword,
-				DBname:   "urls",
-				MaxConn:  20,
-				MinConn:  5,
-				SslMode:  "disable",
-			},
-		}
-
-		return cfg, nil
+		return Config{}, fmt.Errorf("%s: %w", op, ErrCantFindConfig)
 	}
 
 	cfg := Config{}

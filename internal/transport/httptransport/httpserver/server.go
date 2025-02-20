@@ -10,6 +10,7 @@ import (
 	"github.com/Cwby333/url-shorter/internal/logger"
 	"github.com/Cwby333/url-shorter/internal/transport/httptransport/registerrouters"
 	"github.com/Cwby333/url-shorter/internal/transport/httptransport/urlrouter"
+	"github.com/Cwby333/url-shorter/internal/transport/httptransport/usersrouter"
 )
 
 type Server struct {
@@ -17,10 +18,10 @@ type Server struct {
 	ErrCh  chan error
 }
 
-func New(ctx context.Context, cfg config.HTTPServer, urlService urlrouter.URLService, logger logger.Logger, cfgOwner config.Owner) (Server, error) {
+func New(ctx context.Context, cfg config.HTTPServer, urlService urlrouter.URLService, logger logger.Logger, userService usersrouter.UsersService) (Server, error) {
 	const op = "transport/http/httpserver/New"
 
-	mux, err := registerrouters.New(urlService, logger, cfgOwner)
+	mux, err := registerrouters.New(urlService, logger, userService)
 
 	if err != nil {
 		return Server{}, fmt.Errorf("%s:%w", op, err)

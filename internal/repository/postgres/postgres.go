@@ -2,31 +2,31 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Cwby333/url-shorter/internal/config"
 	"github.com/Cwby333/url-shorter/internal/entity/urls"
+	"github.com/Cwby333/url-shorter/internal/entity/users"
 	storageErrors "github.com/Cwby333/url-shorter/internal/repository/errors"
 	"github.com/Cwby333/url-shorter/internal/repository/lib/dsn"
+	"github.com/Cwby333/url-shorter/pkg/generalerrors"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 const (
-	insertAliasQuery = `INSERT INTO urls_alias(url, alias) VALUES($1, $2) RETURNING ID`
-
-	selectIDQuery = `SELECT ID FROM urls_alias WHERE alias = $1`
-
+	insertAliasQuery   = `INSERT INTO urls_alias(url, alias) VALUES($1, $2) RETURNING ID`
 	selectURLItemQuery = `SELECT ID, url, alias FROM urls_alias WHERE alias = $1`
-
-	deleteURLQuery = `DELETE FROM urls_alias WHERE alias = $1`
-
-	updateURLQuery = `UPDATE urls_alias SET url = $1 WHERE alias = $2`
+	deleteURLQuery     = `DELETE FROM urls_alias WHERE alias = $1`
+	updateURLQuery     = `UPDATE urls_alias SET url = $1 WHERE alias = $2`
 )
 
 const (
-	createUserQuery = `INSERT INTO users(uuid, username, password) VALUES (uuid_generate_v4(), $1, $2) RETURNING uuid`
+	createUserQuery       = `INSERT INTO users(uuid, username, password) VALUES (uuid_generate_v4(), $1, $2) RETURNING uuid`
+	selectUserByUUIDQuery = `SELECT uuid, username, password FROM users WHERE uuid = $1`
+	selectUserByUsername  = `SELECT uuid, username, password FROM users WHERE username = $1`
 )
 
 type Postgres struct {
@@ -88,25 +88,19 @@ func (conn Postgres) SaveAlias(ctx context.Context, url, alias string) (int, err
 	if err != nil {
 		return -1, fmt.Errorf("%s: %w", op, err)
 	}
+
+	var id int
+
+	for rows.Next() {
+		rows.Scan(&id)
+	}
 	rows.Close()
 
 	if rows.CommandTag().RowsAffected() < 1 {
 		return -1, fmt.Errorf("%s: %w", op, storageErrors.ErrAliasAlreadyExists)
 	}
 
-	rows, err = tx.Query(ctx, selectIDQuery, alias)
-
-	if err != nil {
-		return -1, fmt.Errorf("%s: %w", op, storageErrors.ErrAliasAlreadyExists)
-	}
-
-	var urlItem urls.URL
-
-	for rows.Next() {
-		rows.Scan(&urlItem.ID)
-	}
-
-	return urlItem.ID, nil
+	return id, nil
 }
 
 func (conn Postgres) GetURL(ctx context.Context, alias string) (string, error) {
@@ -140,7 +134,6 @@ func (conn Postgres) GetURL(ctx context.Context, alias string) (string, error) {
 
 		return "", fmt.Errorf("%s:%v", op, err)
 	}
-	defer rows.Close()
 
 	urlItem, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[urls.URL])
 
@@ -231,21 +224,21 @@ func (conn Postgres) CreateUser(ctx context.Context, username string, password s
 	if err != nil {
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
-	defer func ()  {
+	defer func() {
 		var e error
-		
+
 		if err != nil {
 			e = tx.Rollback(ctx)
-		}else {
+		} else {
 			e = tx.Commit(ctx)
 		}
 
 		if err == nil && e != nil {
-			err = fmt.Errorf("%s: %w", op, err)
+			err = fmt.Errorf("transaction finis: %s: %w", op, err)
 		}
-	}()	
+	}()
 
-	rows, err := tx.Query(ctx,createUserQuery, username, password)
+	rows, err := tx.Query(ctx, createUserQuery, username, password)
 
 	if err != nil {
 		return "", fmt.Errorf("%s: %w", op, err)
@@ -257,10 +250,98 @@ func (conn Postgres) CreateUser(ctx context.Context, username string, password s
 		rows.Scan(&id)
 	}
 	rows.Close()
-	
+
 	if rows.CommandTag().RowsAffected() < 1 {
 		return "", fmt.Errorf("%s: %w", op, storageErrors.ErrUsernameAlreadyExists)
 	}
 
 	return id, nil
+}
+
+func (conn Postgres) GetUserByUUID(ctx context.Context, uuid string) (users.User, error) {
+	const op = "internal/repo/postgres/CreateUser"
+
+	tx, err := conn.pool.Begin(ctx)
+
+	if err != nil {
+		return users.User{}, fmt.Errorf("%s: %w", op, err)
+	}
+	defer func() {
+		var e error
+
+		if err != nil {
+			e = tx.Rollback(ctx)
+		} else {
+			e = tx.Commit(ctx)
+		}
+
+		if err == nil && e != nil {
+			err = fmt.Errorf("transaction finis: %s: %w", op, err)
+		}
+	}()
+
+	rows, err := tx.Query(ctx, selectUserByUUIDQuery, uuid)
+
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return users.User{}, fmt.Errorf("%s: %w", op, storageErrors.ErrAliasNotFound)
+		}
+
+		return users.User{}, fmt.Errorf("%s:%v", op, err)
+	}
+
+	user, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[users.User])
+
+	if err != nil {
+		if err.Error() == "no rows in result set" {
+			return users.User{}, fmt.Errorf("%s: %w", op, generalerrors.ErrUserNotFound)
+		}
+
+		return users.User{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return user, nil
+}
+
+func (conn Postgres) GetUserByUsername(ctx context.Context, username string) (users.User, error) {
+	const op = "internal/repository/postgres/GetUserByUsername"
+
+	tx, err := conn.pool.Begin(ctx)
+
+	if err != nil {
+		return users.User{}, fmt.Errorf("%s: %w", op, err)
+	}
+	defer func() {
+		var e error
+
+		if err != nil {
+			e = tx.Rollback(ctx)
+		} else {
+			e = tx.Commit(ctx)
+		}
+
+		if err == nil && e != nil {
+			err = fmt.Errorf("transaction finis: %s: %w", op, err)
+		}
+	}()
+
+	rows, err := tx.Query(ctx, selectUserByUsername, username)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return users.User{}, fmt.Errorf("%s: %w", op, generalerrors.ErrUserNotFound)
+		}
+
+		return users.User{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	user, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[users.User])
+
+	if err != nil {
+		if err.Error() == "no rows in result set" {
+			return users.User{}, fmt.Errorf("%s: %w", op, generalerrors.ErrUserNotFound)
+		}
+	}
+
+	return user, nil
 }

@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/Cwby333/url-shorter/internal/config"
 	"github.com/Cwby333/url-shorter/internal/logger"
 	"github.com/Cwby333/url-shorter/internal/transport/httptransport/middlewares/logging"
 	"github.com/Cwby333/url-shorter/internal/transport/httptransport/middlewares/requestid"
+	"github.com/Cwby333/url-shorter/pkg/generalerrors"
 )
 
 type URLService interface {
@@ -24,16 +24,15 @@ type Router struct {
 	urlService URLService
 	logger     logger.Logger
 	Router     *http.ServeMux
-	config.Owner
 }
 
-func New(service URLService, logger logger.Logger, owner config.Owner) (*Router, error) {
+func New(service URLService, logger logger.Logger) (*Router, error) {
 	const op = "internal/transport/httptransport/urlrouter/New"
 
 	if service == (URLService)(nil) {
 		logger.Error("nil pointer in URLService interface", slog.String("op", op))
 
-		return nil, ErrNilPointerInInterface
+		return nil, generalerrors.ErrNilPointerInInterface
 	}
 
 	return &Router{
@@ -41,7 +40,6 @@ func New(service URLService, logger logger.Logger, owner config.Owner) (*Router,
 		urlService: service,
 		logger:     logger,
 		Router:     http.NewServeMux(),
-		Owner:      owner,
 	}, nil
 }
 
