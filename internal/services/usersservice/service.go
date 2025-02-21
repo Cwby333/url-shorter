@@ -85,7 +85,7 @@ func (service UserService) LogIn(ctx context.Context, username string, password 
 		return "'", time.Time{}, fmt.Errorf("%s: %w", op, generalerrors.ErrWrongPassword)
 	}
 
-	token, expired, err := service.createJWT(ctx, user.UUID)
+	token, _, expired, err := service.createJWT(ctx, user.UUID)
 
 	if err != nil {
 		return "", time.Time{}, fmt.Errorf("%s: %w", op, err)
@@ -94,19 +94,19 @@ func (service UserService) LogIn(ctx context.Context, username string, password 
 	return token, expired, nil
 }
 
-func (service UserService) createJWT(ctx context.Context, subject string) (string, time.Time, error) {
+func (service UserService) createJWT(ctx context.Context, subject string) (access string, refresh string, expired time.Time, err error) {
 	const op = "internal/services/usersservice/createJWT"
 
 	select {
 	case <-ctx.Done():
-		return "", time.Time{}, fmt.Errorf("%s: %w", op, ctx.Err())
+		return "", "", time.Time{}, fmt.Errorf("%s: %w", op, ctx.Err())
 	default:
 	}
 
 	dur, err := time.ParseDuration(service.jwtCfg.JWTAccess.ExpiredTime)
 
 	if err != nil {
-		return "", time.Time{}, fmt.Errorf("%s: %w", op, err)
+		return "", "", time.Time{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
@@ -120,10 +120,10 @@ func (service UserService) createJWT(ctx context.Context, subject string) (strin
 	s, err := token.SignedString([]byte(service.jwtCfg.SecretKey))
 
 	if err != nil {
-		return "", time.Time{}, fmt.Errorf("%s: %w", op, err)
+		return "", "", time.Time{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	claims := token.Claims.(jwt.RegisteredClaims)
 
-	return s, claims.ExpiresAt.Time, nil
+	return s, "", claims.ExpiresAt.Time, nil
 }

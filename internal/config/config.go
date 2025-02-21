@@ -88,5 +88,7 @@ func Load(env string) (Config, error) {
 		return Config{}, fmt.Errorf("%s: %w", op, err)
 	}
 
+	cfg.JWT.SecretKey = os.Getenv("APP_JWT_SECRET_KEY")
+
 	return cfg, nil
 }

@@ -49,6 +49,7 @@ func (app App) Run() {
 	}
 
 	logger := logger.New(cfg.Env)
+	slog.SetDefault(logger.Logger)
 
 	pool, err := postgres.Connect(ctx, cfg.Database)
 
