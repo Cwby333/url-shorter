@@ -21,7 +21,9 @@ type Config struct {
 
 	Database `yaml:"database" env-required:"true"`
 
-	JWT `yaml:"jwt"`
+	JWT `yaml:"jwt" env-required:"true"`
+
+	Redis `yaml:"redis" env-required:"true"`
 }
 
 type HTTPServer struct {
@@ -41,6 +43,14 @@ type Database struct {
 	SslMode  string `yaml:"ssl-mode"`
 	MaxConn  uint16 `yaml:"max-conn"`
 	MinConn  uint16 `yaml:"min-conn"`
+}
+
+type Redis struct {
+	Host     string `yaml:"host"`
+	Username string `yaml:"username"`
+	Port     int    `yaml:"port"`
+	Password string `yaml:"password"`
+	DB       int    `yaml:"db"`
 }
 
 type JWT struct {
