@@ -9,9 +9,16 @@ import (
 	storageErrors "github.com/Cwby333/url-shorter/internal/repository/errors"
 	"github.com/Cwby333/url-shorter/internal/transport/httptransport/urlrouter/lib/mainresponse"
 	"github.com/Cwby333/url-shorter/internal/transport/httptransport/urlrouter/lib/respforusers"
+	validaterequests "github.com/Cwby333/url-shorter/internal/transport/httptransport/urlrouter/lib/validaterequsts"
+	"github.com/go-playground/validator/v10"
 )
 
-type CreateResponse struct {
+type RegisterRequest struct {
+	Username string `json:"username" validate:"required"`
+	Password string `json:"password" validate:"required"`
+}
+
+type RegisterResponse struct {
 	mainresponse.Response
 	UUID     string `json:"uuid"`
 	Username string `json:"username"`
@@ -19,51 +26,76 @@ type CreateResponse struct {
 
 func (router Router) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	const op = "internal/transport/httptransport/usersrouter/CreateHandler"
+
 	logger := r.Context().Value("logger").(*slog.Logger)
+	logger = logger.With("component", "register handler")
 
-	username, pass, ok := r.BasicAuth()
+	var request RegisterRequest
 
-	if !ok {
-		logger.Info("missing auth header")
+	err := json.NewDecoder(r.Body).Decode(&request)
 
-		resp, err := newCreateResponse(errors.New("unauthorized"))
+	if err != nil {
+		logger.Error("json decoder", slog.String("error", err.Error()))
 
-		if err != nil {
-			logger.Error("json marshal", slog.String("error", err.Error()))
-
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
-
-			return
-		}
-
-		http.Error(w, string(resp), http.StatusUnauthorized)
-
-		return
-	}
-
-	if username == "" || pass == "" {
-		logger.Info("wrong credentials")
-
-		resp, err := newCreateResponse(errors.New("empty username or password"))
+		resp, err := newCreateResponse(errors.New("internal error"))
 
 		if err != nil {
 			logger.Error("json marshal", slog.String("error", err.Error()))
 
-			http.Error(w, "empty username or password", http.StatusUnauthorized)
-
+			http.Error(w, "internal error", http.StatusUnauthorized)
 			return
 		}
 
 		http.Error(w, string(resp), http.StatusUnauthorized)
-
 		return
 	}
 
-	uuid, err := router.service.CreateUser(r.Context(), username, pass)
+	validate := validator.New(validator.WithRequiredStructEnabled())
+
+	err = validate.Struct(request)
+
+	if err != nil {
+		logger.Info("bad request", slog.String("error", err.Error()))
+
+		errorsSlice := err.(validator.ValidationErrors)
+
+		errForResp := validaterequests.Validate(errorsSlice)
+
+		resp := RegisterResponse{
+			UUID:     "",
+			Username: "",
+			Response: mainresponse.NewError(errForResp...),
+		}
+
+		data, err := json.Marshal(resp)
+
+		if err != nil {
+			logger.Error("json marshall error", slog.String("error", err.Error()))
+
+			out, err := newCreateResponse(errors.New("bad request"))
+
+			if err != nil {
+				logger.Error("json marshall", slog.String("error", err.Error()))
+
+				http.Error(w, "bad request", http.StatusBadRequest)
+
+				return
+			}
+
+			http.Error(w, string(out), http.StatusBadRequest)
+
+			return
+		}
+
+		http.Error(w, string(data), http.StatusBadRequest)
+		return
+	}
+
+	uuid, err := router.service.CreateUser(r.Context(), request.Username, request.Password)
 
 	if err != nil {
 		if errors.Is(err, storageErrors.ErrUsernameAlreadyExists) {
-			logger.Info("username already exists", slog.String("username", username))
+			logger.Info("username already exists", slog.String("username", request.Username))
 
 			resp, err := newCreateResponse(errors.New("username already exists"))
 
@@ -71,12 +103,10 @@ func (router Router) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 				logger.Error("json marshal", slog.String("error", err.Error()))
 
 				http.Error(w, "username already exists", http.StatusUnauthorized)
-
 				return
 			}
 
 			http.Error(w, string(resp), http.StatusUnauthorized)
-
 			return
 		}
 
@@ -88,19 +118,17 @@ func (router Router) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 			logger.Error("json marshal", slog.String("error", err.Error()))
 
 			http.Error(w, respforusers.ErrInternalError, http.StatusUnauthorized)
-
 			return
 		}
 
 		http.Error(w, string(resp), http.StatusUnauthorized)
-
 		return
 	}
 
-	response := CreateResponse{
+	response := RegisterResponse{
 		Response: mainresponse.NewOK(),
 		UUID:     uuid,
-		Username: username,
+		Username: request.Username,
 	}
 
 	out, err := json.Marshal(response)
@@ -109,7 +137,6 @@ func (router Router) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		logger.Error("json marshal", slog.String("error", err.Error()))
 
 		http.Error(w, "success created", http.StatusOK)
-
 		return
 	}
 
@@ -119,7 +146,7 @@ func (router Router) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func newCreateResponse(err error) ([]byte, error) {
-	response := CreateResponse{
+	response := RegisterResponse{
 		Response: mainresponse.NewError(err.Error()),
 		UUID:     "",
 		Username: "",

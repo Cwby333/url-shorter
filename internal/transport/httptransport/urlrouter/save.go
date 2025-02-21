@@ -81,6 +81,8 @@ func (router *Router) Save(w http.ResponseWriter, r *http.Request) {
 	err = validate.Struct(req)
 
 	if err != nil {
+		logger.Info("bad request", slog.String("error", err.Error()))
+
 		errorsValidation := err.(validator.ValidationErrors)
 
 		errForResp := validaterequests.Validate(errorsValidation)
@@ -100,12 +102,12 @@ func (router *Router) Save(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				logger.Error("json marshall", slog.String("error", err.Error()))
 
-				http.Error(w, respforusers.ErrInternalError, http.StatusInternalServerError)
+				http.Error(w, "bad request", http.StatusBadRequest)
 
 				return
 			}
 
-			http.Error(w, string(out), http.StatusInternalServerError)
+			http.Error(w, string(out), http.StatusBadRequest)
 
 			return
 		}

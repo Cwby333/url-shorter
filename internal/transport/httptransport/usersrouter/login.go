@@ -7,8 +7,15 @@ import (
 	"net/http"
 
 	"github.com/Cwby333/url-shorter/internal/transport/httptransport/urlrouter/lib/mainresponse"
+	validaterequests "github.com/Cwby333/url-shorter/internal/transport/httptransport/urlrouter/lib/validaterequsts"
 	"github.com/Cwby333/url-shorter/pkg/generalerrors"
+	"github.com/go-playground/validator/v10"
 )
+
+type LogInRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
 
 type LogInResponse struct {
 	Response mainresponse.Response
@@ -18,42 +25,60 @@ func (router Router) LogInHandler(w http.ResponseWriter, r *http.Request) {
 	const op = "internal/transport/httptransport/usersrouter/LogInHandler"
 
 	logger := r.Context().Value("logger").(*slog.Logger)
+	logger = logger.With("component", "login handler")
 
-	username, password, ok := r.BasicAuth()
+	var req LogInRequest
 
-	if !ok {
-		logger.Info("missing auth header")
+	err := json.NewDecoder(r.Body).Decode(&req)
 
-		resp, err := newLogInResponse(errors.New("unauthorized"))
+	if err != nil {
+		logger.Error("json decoder", slog.String("error", err.Error()))
 
-		if err != nil {
-			logger.Error("json marshal", slog.String("error", err.Error()))
-
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
-			return
-		}
-
-		http.Error(w, string(resp), http.StatusUnauthorized)
-		return
-	}
-
-	if username == "" || password == "" {
-		logger.Info("wrong credentials")
-
-		resp, err := newLogInResponse(errors.New("empty username or password"))
+		resp, err := newLogInResponse(err)
 
 		if err != nil {
 			logger.Error("json marshal", slog.String("error", err.Error()))
 
-			http.Error(w, "empty username or password", http.StatusUnauthorized)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+
 			return
 		}
 
-		http.Error(w, string(resp), http.StatusUnauthorized)
+		http.Error(w, string(resp), http.StatusInternalServerError)
+
 		return
 	}
 
-	token, expired, err := router.service.LogIn(r.Context(), username, password)
+	validate := validator.New(validator.WithRequiredStructEnabled())
+
+	err = validate.Struct(req)
+
+	if err != nil {
+		logger.Info("bad request", slog.String("error", err.Error()))
+
+		errForResp := err.(validator.ValidationErrors)
+
+		resp := validaterequests.Validate(errForResp)
+
+		response := LogInResponse{
+			Response: mainresponse.NewError(resp...),
+		}
+
+		data, err := json.Marshal(response)
+
+		if err != nil {
+			logger.Error("json marshal", slog.String("error", err.Error()))
+
+			http.Error(w, "bad request", http.StatusBadRequest)
+
+			return
+		}
+
+		http.Error(w, string(data), http.StatusBadRequest)
+		return
+	}
+
+	token, expired, err := router.service.LogIn(r.Context(), req.Username, req.Password)
 
 	if err != nil {
 		if errors.Is(err, generalerrors.ErrUserNotFound) {
@@ -81,7 +106,6 @@ func (router Router) LogInHandler(w http.ResponseWriter, r *http.Request) {
 				logger.Error("json marshal", slog.String("error", err.Error()))
 
 				http.Error(w, "wrong password", http.StatusUnauthorized)
-
 				return
 			}
 
@@ -97,7 +121,6 @@ func (router Router) LogInHandler(w http.ResponseWriter, r *http.Request) {
 			logger.Error("json marshal", slog.String("error", err.Error()))
 
 			http.Error(w, "internal error", http.StatusUnauthorized)
-
 			return
 		}
 
@@ -128,7 +151,7 @@ func (router Router) LogInHandler(w http.ResponseWriter, r *http.Request) {
 		Value:    token,
 		HttpOnly: true,
 		Secure:   true,
-		Expires: expired,
+		Expires:  expired,
 	})
 
 	w.Write(data)

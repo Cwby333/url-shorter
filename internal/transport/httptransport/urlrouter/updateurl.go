@@ -9,6 +9,8 @@ import (
 	storageErrors "github.com/Cwby333/url-shorter/internal/repository/errors"
 	"github.com/Cwby333/url-shorter/internal/transport/httptransport/urlrouter/lib/mainresponse"
 	"github.com/Cwby333/url-shorter/internal/transport/httptransport/urlrouter/lib/respforusers"
+	validaterequests "github.com/Cwby333/url-shorter/internal/transport/httptransport/urlrouter/lib/validaterequsts"
+	"github.com/go-playground/validator/v10"
 )
 
 type RequestUpdateURL struct {
@@ -41,6 +43,48 @@ func (router *Router) UpdateURL(w http.ResponseWriter, r *http.Request) {
 		}
 
 		http.Error(w, string(out), http.StatusInternalServerError)
+
+		return
+	}
+
+	validate := validator.New(validator.WithRequiredStructEnabled())
+
+	err = validate.Struct(req)
+
+	if err != nil {
+		logger.Info("bad request", slog.String("error", err.Error()))
+
+		errorsValidation := err.(validator.ValidationErrors)
+
+		errForResp := validaterequests.Validate(errorsValidation)
+
+		response := ResponseUpdateURL{
+			Response: mainresponse.NewError(errForResp...),
+		}
+
+		data, err := json.Marshal(response)
+
+		if err != nil {
+			logger.Error("json marshall", slog.String("error", err.Error()))
+
+			out, err := newSaveResponse(errors.New(respforusers.ErrInternalError))
+
+			if err != nil {
+				logger.Error("json marshall", slog.String("error", err.Error()))
+
+				http.Error(w, "bad request", http.StatusBadRequest)
+
+				return
+			}
+
+			http.Error(w, string(out), http.StatusBadRequest)
+
+			return
+		}
+
+		logger.Debug("bad request")
+
+		http.Error(w, string(data), http.StatusBadRequest)
 
 		return
 	}

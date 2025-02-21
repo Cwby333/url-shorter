@@ -67,6 +67,8 @@ func (router *Router) Delete(w http.ResponseWriter, r *http.Request) {
 	err = validate.Struct(req)
 
 	if err != nil {
+		logger.Info("bad request", slog.String("error", err.Error()))
+
 		errorsValidate := err.(validator.ValidationErrors)
 
 		errForResp := validaterequests.Validate(errorsValidate)
