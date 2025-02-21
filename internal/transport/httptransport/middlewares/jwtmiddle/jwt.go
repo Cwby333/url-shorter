@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/Cwby333/url-shorter/internal/entity/tokens"
 	"github.com/Cwby333/url-shorter/internal/transport/httptransport/urlrouter/lib/mainresponse"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -42,7 +43,7 @@ func New(next http.Handler) http.Handler {
 
 		secretKey := os.Getenv("APP_JWT_SECRET_KEY")
 
-		t, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
+		t, err := jwt.ParseWithClaims(tokenString, &tokens.JWTAccessClaims{}, func(t *jwt.Token) (interface{}, error) {
 			return []byte(secretKey), nil
 		}, jwt.WithIssuer(os.Getenv("APP_JWT_ISSUER")), jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}), jwt.WithExpirationRequired())
 

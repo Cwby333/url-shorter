@@ -3,7 +3,6 @@ package usersrouter
 import (
 	"encoding/json"
 	"errors"
-	"log"
 	"log/slog"
 	"net/http"
 
@@ -174,7 +173,6 @@ func (router Router) LogInHandler(w http.ResponseWriter, r *http.Request) {
 		Secure:   true,
 		Expires:  refreshClaims.ExpiresAt.Time,
 	})
-	log.Println(accessClaims, refreshClaims)
 
 	w.Write(data)
 }
