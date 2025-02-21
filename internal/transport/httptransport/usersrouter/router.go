@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"time"
 
+	"github.com/Cwby333/url-shorter/internal/entity/tokens"
 	"github.com/Cwby333/url-shorter/internal/transport/httptransport/middlewares/logging"
 	"github.com/Cwby333/url-shorter/internal/transport/httptransport/middlewares/requestid"
 	"github.com/Cwby333/url-shorter/pkg/generalerrors"
@@ -14,7 +14,7 @@ import (
 
 type UsersService interface {
 	CreateUser(ctx context.Context, username string, password string) (uuid string, err error)
-	LogIn(ctx context.Context, username string, password string) (string, time.Time, error)
+	LogIn(ctx context.Context, username string, password string) (accessClaims tokens.JWTAccessClaims, refreshClaims tokens.JWTRefreshClaims, err error)
 }
 
 type Router struct {

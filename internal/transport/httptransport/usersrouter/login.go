@@ -3,6 +3,7 @@ package usersrouter
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"log/slog"
 	"net/http"
 
@@ -78,7 +79,7 @@ func (router Router) LogInHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, expired, err := router.service.LogIn(r.Context(), req.Username, req.Password)
+	accessClaims, refreshClaims, err := router.service.LogIn(r.Context(), req.Username, req.Password)
 
 	if err != nil {
 		if errors.Is(err, generalerrors.ErrUserNotFound) {
@@ -140,7 +141,20 @@ func (router Router) LogInHandler(w http.ResponseWriter, r *http.Request) {
 
 		w.Write([]byte("Success login"))
 
-		w.Header().Set("Authorization", token)
+		http.SetCookie(w, &http.Cookie{
+			Name:     "jwt-access",
+			Value:    accessClaims.Sign,
+			HttpOnly: true,
+			Secure:   true,
+			Expires:  accessClaims.ExpiresAt.Time,
+		})
+		http.SetCookie(w, &http.Cookie{
+			Name:     "refresh-token",
+			Value:    refreshClaims.Sign,
+			HttpOnly: true,
+			Secure:   true,
+			Expires:  refreshClaims.ExpiresAt.Time,
+		})
 		return
 	}
 
@@ -148,11 +162,19 @@ func (router Router) LogInHandler(w http.ResponseWriter, r *http.Request) {
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "jwt-access",
-		Value:    token,
+		Value:    accessClaims.Sign,
 		HttpOnly: true,
 		Secure:   true,
-		Expires:  expired,
+		Expires:  accessClaims.ExpiresAt.Time,
 	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh-token",
+		Value:    refreshClaims.Sign,
+		HttpOnly: true,
+		Secure:   true,
+		Expires:  refreshClaims.ExpiresAt.Time,
+	})
+	log.Println(accessClaims, refreshClaims)
 
 	w.Write(data)
 }
