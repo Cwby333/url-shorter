@@ -119,6 +119,7 @@ func (service UserService) createJWT(ctx context.Context, subject string) (acces
 			NotBefore: jwt.NewNumericDate(time.Now()),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
+		Type: "access",
 	})
 	accessSign, err := accessToken.SignedString([]byte(os.Getenv("APP_JWT_SECRET_KEY")))
 
@@ -144,6 +145,7 @@ func (service UserService) createJWT(ctx context.Context, subject string) (acces
 			NotBefore: jwt.NewNumericDate(time.Now()),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
+		Type: "refresh",
 	})
 	refreshSign, err := refreshToken.SignedString([]byte(os.Getenv("APP_JWT_SECRET_KEY")))
 
