@@ -22,8 +22,6 @@ type LogInResponse struct {
 }
 
 func (router Router) LogInHandler(w http.ResponseWriter, r *http.Request) {
-	const op = "internal/transport/httptransport/usersrouter/LogInHandler"
-
 	logger := r.Context().Value("logger").(*slog.Logger)
 	logger = logger.With("component", "login handler")
 
@@ -57,13 +55,10 @@ func (router Router) LogInHandler(w http.ResponseWriter, r *http.Request) {
 		logger.Info("bad request", slog.String("error", err.Error()))
 
 		errForResp := err.(validator.ValidationErrors)
-
 		resp := validaterequests.Validate(errForResp)
-
 		response := LogInResponse{
 			Response: mainresponse.NewError(resp...),
 		}
-
 		data, err := json.Marshal(response)
 
 		if err != nil {
@@ -81,6 +76,7 @@ func (router Router) LogInHandler(w http.ResponseWriter, r *http.Request) {
 	accessClaims, refreshClaims, err := router.service.LogIn(r.Context(), req.Username, req.Password)
 
 	if err != nil {
+
 		if errors.Is(err, generalerrors.ErrUserNotFound) {
 			logger.Info("wrong username")
 
@@ -96,7 +92,6 @@ func (router Router) LogInHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, string(resp), http.StatusUnauthorized)
 			return
 		}
-
 		if errors.Is(err, generalerrors.ErrWrongPassword) {
 			logger.Info("wrong password")
 

@@ -23,12 +23,18 @@ type UsersRepository interface {
 	GetUserByUsername(ctx context.Context, username string) (users.User, error)
 }
 
+type RefreshInvalidator interface {
+	InvalidRefresh(ctx context.Context, tokenID string, ttl time.Duration)
+	CheckRefresh(ctx context.Context, tokenID string) (error)
+}
+
 type UserService struct {
 	repo   UsersRepository
+	invalidator RefreshInvalidator
 	jwtCfg config.JWT
 }
 
-func New(repo UsersRepository, logger logger.Logger, jwtCfg config.JWT) (UserService, error) {
+func New(repo UsersRepository, invalidator RefreshInvalidator, logger logger.Logger, jwtCfg config.JWT) (UserService, error) {
 	const op = "internal/services/userservice/New"
 
 	if repo == (UsersRepository)(nil) {
@@ -36,9 +42,16 @@ func New(repo UsersRepository, logger logger.Logger, jwtCfg config.JWT) (UserSer
 
 		return UserService{}, fmt.Errorf("%s: %w", op, generalerrors.ErrNilPointerInInterface)
 	}
+	if invalidator == (RefreshInvalidator)(nil) {
+		logger.Error("nil interface in repo")
+
+		return UserService{}, fmt.Errorf("%s: %w", op, generalerrors.ErrNilPointerInInterface)
+
+	}
 
 	return UserService{
 		repo:   repo,
+		invalidator: invalidator,
 		jwtCfg: jwtCfg,
 	}, nil
 }
@@ -92,6 +105,7 @@ func (service UserService) createJWT(ctx context.Context, subject string) (acces
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(refreshDur)),
 			NotBefore: jwt.NewNumericDate(time.Now()),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ID: uuid.NewString(),
 		},
 		Type: "refresh",
 	})
@@ -162,14 +176,14 @@ func (service UserService) GetUserByUUID(ctx context.Context, uuid string) (user
 	return user, nil
 }
 
-func (service UserService) LogOut(ctx context.Context, tokenId string) error {
+func (service UserService) LogOut(ctx context.Context, tokenId string, ttl time.Duration) {
 	const op = "internal/services/userservice/LogOut"
 
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
+		return
 	default:
 	}
 
-	return nil
+	service.invalidator.InvalidRefresh(ctx, tokenId, ttl)
 }

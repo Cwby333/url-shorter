@@ -16,6 +16,7 @@ import (
 	"github.com/Cwby333/url-shorter/internal/services/urlsservice"
 	"github.com/Cwby333/url-shorter/internal/services/usersservice"
 	"github.com/Cwby333/url-shorter/internal/transport/httptransport/httpserver"
+	"github.com/Cwby333/url-shorter/internal/repository/redis"
 )
 
 type App struct {
@@ -70,7 +71,14 @@ func (app App) Run() {
 		return
 	}
 
-	userService, err := usersservice.New(pool, logger, cfg.JWT)
+	client, err := myredis.New(ctx, cfg.Redis)
+
+	if err != nil {
+		logger.Error("", slog.String("error", err.Error()))
+		return
+	}
+
+	userService, err := usersservice.New(pool, client, logger, cfg.JWT)
 
 	if err != nil {
 		logger.Error("", slog.String("error", err.Error()))

@@ -1,8 +1,8 @@
 package jwtmiddle
 
 import (
+	"context"
 	"encoding/json"
-	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -12,39 +12,34 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func New(next http.Handler) http.Handler {
+func NewRefresh(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		const op = "internal/transport/httptransort/middlewares/jwtmiddle"
-
 		logger := r.Context().Value("logger").(*slog.Logger)
-		logger = logger.With("component", "json middleware")
+		logger = logger.With("component", "logout")
 
-		tokenString := r.Header.Get("Authorization")
+		refreshToken := r.Header.Get("Authorization")
+		refreshToken = strings.TrimPrefix(refreshToken, "Bearer ")
 
-		tokenString = strings.TrimPrefix(tokenString, "Bearer ")
+		if refreshToken == "" {
+			logger.Info("missed auth header, must invalid refresh token")
 
-		if tokenString == "" {
-			logger.Info("unauthorized")
-
-			resp := mainresponse.NewError("unauthorized")
-
+			resp := mainresponse.NewError("send refresh token")
+			
 			data, err := json.Marshal(resp)
 
 			if err != nil {
-				logger.Error("json marshall", slog.String("error", err.Error()))
+				logger.Error("json marshal", slog.String("error", err.Error()))
 
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				http.Error(w, "send refresh token", http.StatusBadRequest)
 				return
 			}
 
-			http.Error(w, string(data), http.StatusUnauthorized)
+			http.Error(w, string(data), http.StatusBadRequest)	
 			return
 		}
 
-		secretKey := os.Getenv("APP_JWT_SECRET_KEY")
-
-		t, err := jwt.ParseWithClaims(tokenString, jwt.MapClaims{}, func(t *jwt.Token) (interface{}, error) {
-			return []byte(secretKey), nil
+		t, err := jwt.ParseWithClaims(refreshToken, jwt.MapClaims{}, func(t *jwt.Token) (interface{}, error) {
+			return []byte(os.Getenv("APP_JWT_SECRET_KEY")), nil
 		}, jwt.WithIssuer(os.Getenv("APP_JWT_ISSUER")), jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}), jwt.WithExpirationRequired())
 
 		if err != nil {
@@ -53,9 +48,9 @@ func New(next http.Handler) http.Handler {
 			resp := mainresponse.NewError("unauthorized")
 
 			data, err := json.Marshal(resp)
-
+		
 			if err != nil {
-				logger.Error("json marshall", slog.String("error", err.Error()))
+				logger.Error("json marshal", slog.String("error", err.Error()))
 
 				http.Error(w, "unauthorized", http.StatusUnauthorized)
 				return
@@ -66,14 +61,14 @@ func New(next http.Handler) http.Handler {
 		}
 
 		if !t.Valid {
-			logger.Info("invalid jwt")
+			logger.Info("invalid token", slog.String("error", err.Error()))
 
 			resp := mainresponse.NewError("unauthorized")
 
 			data, err := json.Marshal(resp)
-
+		
 			if err != nil {
-				logger.Error("json marshall", slog.String("error", err.Error()))
+				logger.Error("json marshal", slog.String("error", err.Error()))
 
 				http.Error(w, "unauthorized", http.StatusUnauthorized)
 				return
@@ -84,27 +79,26 @@ func New(next http.Handler) http.Handler {
 		}
 
 		claims, ok := t.Claims.(jwt.MapClaims)
-		log.Println(claims)
 
 		if !ok {
-			logger.Error("wrong type assertion to *jwt.MapClaims")
+			logger.Error("wrong type assertion to jwt.MapClaims")
 
-			resp := mainresponse.NewError("unauthorized")
+			resp := mainresponse.NewError("internal error")
 
 			data, err := json.Marshal(resp)
 
 			if err != nil {
-				logger.Error("json marshall", slog.String("error", err.Error()))
+				logger.Error("json marshal", slog.String("error", err.Error()))
 
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				http.Error(w, "internal error", http.StatusInternalServerError)
 				return
 			}
 
-			http.Error(w, string(data), http.StatusUnauthorized)
+			http.Error(w, string(data), http.StatusInternalServerError)
 			return
 		}
 
-		if claims["type"] != "access" {
+		if claims["type"] != "refresh" {
 			logger.Info("wrong token type")
 
 			resp := mainresponse.NewError("unauthorized")
@@ -121,6 +115,10 @@ func New(next http.Handler) http.Handler {
 			http.Error(w, string(data), http.StatusUnauthorized)
 			return
 		}
+
+		ctx := r.Context()
+		ctx = context.WithValue(ctx, "logger", logger)
+		r = r.WithContext(ctx)
 
 		next.ServeHTTP(w, r)
 	})

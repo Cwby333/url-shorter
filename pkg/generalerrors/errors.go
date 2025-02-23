@@ -8,4 +8,6 @@ var (
 	ErrWrongPassword = errors.New("wrong password")
 
 	ErrUserNotFound = errors.New("user not found")
+
+	ErrRefreshInBlackList = errors.New("token found in blacklist")
 )

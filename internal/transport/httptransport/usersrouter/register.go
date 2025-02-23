@@ -25,8 +25,6 @@ type RegisterResponse struct {
 }
 
 func (router Router) RegisterHandler(w http.ResponseWriter, r *http.Request) {
-	const op = "internal/transport/httptransport/usersrouter/CreateHandler"
-
 	logger := r.Context().Value("logger").(*slog.Logger)
 	logger = logger.With("component", "register handler")
 
@@ -58,15 +56,12 @@ func (router Router) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		logger.Info("bad request", slog.String("error", err.Error()))
 
 		errorsSlice := err.(validator.ValidationErrors)
-
 		errForResp := validaterequests.Validate(errorsSlice)
-
 		resp := RegisterResponse{
 			UUID:     "",
 			Username: "",
 			Response: mainresponse.NewError(errForResp...),
 		}
-
 		data, err := json.Marshal(resp)
 
 		if err != nil {
@@ -94,6 +89,7 @@ func (router Router) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	uuid, err := router.service.CreateUser(r.Context(), request.Username, request.Password)
 
 	if err != nil {
+
 		if errors.Is(err, storageErrors.ErrUsernameAlreadyExists) {
 			logger.Info("username already exists", slog.String("username", request.Username))
 

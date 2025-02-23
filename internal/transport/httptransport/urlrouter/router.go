@@ -45,11 +45,11 @@ func New(service URLService, logger logger.Logger) (*Router, error) {
 }
 
 func (router *Router) Run() {
-	router.Router.Handle("POST /create", requestid.New(router.logger.Logger)(logging.New(jwtmiddle.New(http.HandlerFunc(router.Save)))))
+	router.Router.Handle("POST /create", requestid.New(router.logger.Logger)(logging.New(jwtmiddle.NewAccess(http.HandlerFunc(router.Save)))))
 
 	router.Router.Handle("GET /get", requestid.New(router.logger.Logger)(logging.New(http.HandlerFunc(router.Get))))
 
-	router.Router.Handle("DELETE /delete", requestid.New(router.logger.Logger)(logging.New(jwtmiddle.New(http.HandlerFunc(router.Delete)))))
+	router.Router.Handle("DELETE /delete", requestid.New(router.logger.Logger)(logging.New(jwtmiddle.NewAccess(http.HandlerFunc(router.Delete)))))
 
-	router.Router.Handle("PUT /update", requestid.New(router.logger.Logger)(logging.New(jwtmiddle.New(http.HandlerFunc(router.UpdateURL)))))
+	router.Router.Handle("PUT /update", requestid.New(router.logger.Logger)(logging.New(jwtmiddle.NewAccess(http.HandlerFunc(router.UpdateURL)))))
 }
