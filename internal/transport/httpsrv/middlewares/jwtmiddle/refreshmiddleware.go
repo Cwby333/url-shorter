@@ -14,7 +14,25 @@ import (
 
 func NewRefresh(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		logger := r.Context().Value("logger").(*slog.Logger)
+		logger, ok := r.Context().Value("logger").(*slog.Logger)
+
+		if !ok {
+			slog.Error("wrong type assertion to logger")
+
+			resp := mainresponse.NewError("internal error")
+			data, err := json.Marshal(resp)
+
+			if err != nil {
+				slog.Error("json marshal", slog.String("error", err.Error()))
+
+				http.Error(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+
+			http.Error(w, string(data), http.StatusInternalServerError)
+			return
+		}
+
 		logger = logger.With("component", "logout")
 
 		refreshToken := r.Header.Get("Authorization")
@@ -98,7 +116,26 @@ func NewRefresh(next http.Handler) http.Handler {
 			return
 		}
 
-		if claims["type"] != "refresh" {
+		typeToken, ok := claims["type"].(string)
+
+		if !ok {
+			logger.Error("type assertion error")
+
+			resp := mainresponse.NewError("internal error")
+			data, err := json.Marshal(resp)
+
+			if err != nil {
+				logger.Error("json marshal", slog.String("error", err.Error()))
+
+				http.Error(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+
+			http.Error(w, string(data), http.StatusInternalServerError)
+			return
+		}
+
+		if typeToken != "refresh" {
 			logger.Info("wrong token type")
 
 			resp := mainresponse.NewError("unauthorized")

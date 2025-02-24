@@ -2,8 +2,11 @@ package logging
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 	"net/http"
+
+	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/mainresponse"
 )
 
 func New(next http.Handler) http.Handler {
@@ -11,9 +14,19 @@ func New(next http.Handler) http.Handler {
 		logger, ok := r.Context().Value("logger").(*slog.Logger)
 
 		if !ok {
-			logger.Debug("cannot find logger in context")
-			next.ServeHTTP(w, r)
+			slog.Error("wrong type assertion to logger")
 
+			resp := mainresponse.NewError("internal error")
+			data, err := json.Marshal(resp)
+
+			if err != nil {
+				slog.Error("json marshal", slog.String("error", err.Error()))
+
+				http.Error(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+
+			http.Error(w, string(data), http.StatusInternalServerError)
 			return
 		}
 

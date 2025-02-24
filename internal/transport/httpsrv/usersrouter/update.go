@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 
+	validaterequests "github.com/Cwby333/url-shorter/internal/transport/httpsrv/lib/validaterequsts"
 	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/mainresponse"
-	validaterequests "github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/validaterequsts"
 	"github.com/Cwby333/url-shorter/pkg/generalerrors"
 	"github.com/go-playground/validator/v10"
 )
@@ -25,7 +25,25 @@ type UpdateResponse struct {
 }
 
 func (router Router) Update(w http.ResponseWriter, r *http.Request) {
-	logger := r.Context().Value("logger").(*slog.Logger)
+	logger, ok := r.Context().Value("logger").(*slog.Logger)
+
+	if !ok {
+		slog.Error("wrong type assertion to logger")
+
+		resp := mainresponse.NewError("internal error")
+		data, err := json.Marshal(resp)
+
+		if err != nil {
+			slog.Error("json marshal", slog.String("error", err.Error()))
+
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		http.Error(w, string(data), http.StatusInternalServerError)
+		return
+	}
+
 	logger = logger.With("component", "update user handler")
 
 	var req UpdateRequest
@@ -47,6 +65,8 @@ func (router Router) Update(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, string(data), http.StatusInternalServerError)
 		return
 	}
+
+	r.Body.Close()
 
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	err = validate.Struct(req)
@@ -128,11 +148,20 @@ func (router Router) Update(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Error("json marshal", slog.String("error", err.Error()))
 
-		w.Write([]byte("success update, uuid:" + " " + user.UUID))
+		_, err = w.Write([]byte("success update, uuid:" + " " + user.UUID))
+
+		if err != nil {
+			logger.Error("response writer", slog.String("error", err.Error()))
+		}
+
 		return
 	}
 
 	logger.Info("success update handler")
 
-	w.Write(data)
+	_, err = w.Write(data)
+
+	if err != nil {
+		logger.Error("response write", slog.String("error", err.Error()))
+	}
 }

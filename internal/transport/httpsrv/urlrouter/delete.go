@@ -3,12 +3,13 @@ package urlrouter
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 
+	validaterequests "github.com/Cwby333/url-shorter/internal/transport/httpsrv/lib/validaterequsts"
 	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/mainresponse"
 	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/respforusers"
-	validaterequests "github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/validaterequsts"
 
 	"github.com/go-playground/validator/v10"
 )
@@ -22,6 +23,8 @@ type ResponseDelete struct {
 }
 
 func newDeleteResponse(err error) ([]byte, error) {
+	const op = "internal/transport/httpsrv/urlrouter/delete.go/newResponseDelete"
+
 	response := ResponseDelete{
 		Response: mainresponse.NewError(err.Error()),
 	}
@@ -29,14 +32,31 @@ func newDeleteResponse(err error) ([]byte, error) {
 	out, err := json.Marshal(response)
 
 	if err != nil {
-		return []byte{}, err
+		return []byte{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return out, nil
 }
 
 func (router *Router) Delete(w http.ResponseWriter, r *http.Request) {
-	logger := r.Context().Value("logger").(*slog.Logger)
+	logger, ok := r.Context().Value("logger").(*slog.Logger)
+
+	if !ok {
+		slog.Error("wrong type assertion to logger")
+
+		resp := mainresponse.NewError("internal error")
+		data, err := json.Marshal(resp)
+
+		if err != nil {
+			slog.Error("json marshal", slog.String("error", err.Error()))
+
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		http.Error(w, string(data), http.StatusInternalServerError)
+		return
+	}
 
 	logger = logger.With("component", "delete handler")
 
@@ -61,6 +81,7 @@ func (router *Router) Delete(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
+
 	r.Body.Close()
 
 	validate := validator.New(validator.WithRequiredStructEnabled())
@@ -133,5 +154,12 @@ func (router *Router) Delete(w http.ResponseWriter, r *http.Request) {
 		logger.Error("cache", slog.String("error", err.Error()))
 	}
 
-	w.Write([]byte("Success deleted"))
+	_, err = w.Write([]byte("Success deleted"))
+
+	if err != nil {
+		logger.Error("response writer", slog.String("error", err.Error()))
+
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
 }

@@ -51,7 +51,7 @@ type Redis struct {
 	Port     int           `yaml:"port"`
 	Password string        `yaml:"password"`
 	DB       int           `yaml:"db"`
-	UrlTTL   time.Duration `yaml:"url-ttl"`
+	URLTTL   time.Duration `yaml:"url-ttl"`
 }
 
 type JWT struct {

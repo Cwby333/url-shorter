@@ -1,15 +1,15 @@
 package urlrouter
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 
+	validaterequests "github.com/Cwby333/url-shorter/internal/transport/httpsrv/lib/validaterequsts"
 	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/mainresponse"
 	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/respforusers"
-	validaterequests "github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/validaterequsts"
 	"github.com/Cwby333/url-shorter/pkg/generalerrors"
 
 	"github.com/go-playground/validator/v10"
@@ -25,6 +25,8 @@ type ResponseGet struct {
 }
 
 func newResponseGet(err error) ([]byte, error) {
+	const op = "internal/transport/httpsrv/urlrouter/get.go/newResponseGet"
+
 	response := ResponseGet{
 		URL:      "",
 		Response: mainresponse.NewError(err.Error()),
@@ -33,14 +35,31 @@ func newResponseGet(err error) ([]byte, error) {
 	out, err := json.Marshal(response)
 
 	if err != nil {
-		return []byte{}, err
+		return []byte{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return out, nil
 }
 
 func (router *Router) Get(w http.ResponseWriter, r *http.Request) {
-	logger := r.Context().Value("logger").(*slog.Logger)
+	logger, ok := r.Context().Value("logger").(*slog.Logger)
+
+	if !ok {
+		slog.Error("wrong type assertion to logger")
+
+		resp := mainresponse.NewError("internal error")
+		data, err := json.Marshal(resp)
+
+		if err != nil {
+			slog.Error("json marshal", slog.String("error", err.Error()))
+
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		http.Error(w, string(data), http.StatusInternalServerError)
+		return
+	}
 
 	logger = logger.With("component", "get handler")
 
@@ -62,6 +81,7 @@ func (router *Router) Get(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, string(out), http.StatusInternalServerError)
 		return
 	}
+
 	r.Body.Close()
 
 	validate := validator.New(validator.WithRequiredStructEnabled())
@@ -114,11 +134,19 @@ func (router *Router) Get(w http.ResponseWriter, r *http.Request) {
 	} else {
 		logger.Info("success get handler, find from cache")
 
-		w.Write([]byte(response))
+		_, err = w.Write([]byte(response))
+
+		if err != nil {
+			logger.Error("response writer", slog.String("error", err.Error()))
+
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
 		return
 	}
 
-	url, err := router.urlService.GetURL(context.Background(), req.Alias)
+	url, err := router.urlService.GetURL(r.Context(), req.Alias)
 
 	if err != nil {
 		if errors.Is(err, generalerrors.ErrAliasNotFound) {
@@ -157,7 +185,7 @@ func (router *Router) Get(w http.ResponseWriter, r *http.Request) {
 		Response: mainresponse.NewOK(),
 	}
 
-	responseJson, err := json.Marshal(resp)
+	responseJSON, err := json.Marshal(resp)
 
 	if err != nil {
 		logger.Error("json marshal", slog.String("error", err.Error()))
@@ -165,7 +193,7 @@ func (router *Router) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = router.urlService.SaveResponseInCache(r.Context(), req.Alias, string(responseJson))
+	err = router.urlService.SaveResponseInCache(r.Context(), req.Alias, string(responseJSON))
 
 	if err != nil {
 		logger.Error("cache", slog.String("error", err.Error()))
@@ -173,5 +201,11 @@ func (router *Router) Get(w http.ResponseWriter, r *http.Request) {
 
 	logger.Info("success handle request")
 
-	w.Write(responseJson)
+	_, err = w.Write(responseJSON)
+
+	if err != nil {
+		logger.Error("response write", slog.String("error", err.Error()))
+
+		http.Error(w, "internal error", http.StatusInternalServerError)
+	}
 }

@@ -3,12 +3,13 @@ package urlrouter
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 
+	validaterequests "github.com/Cwby333/url-shorter/internal/transport/httpsrv/lib/validaterequsts"
 	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/mainresponse"
 	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/respforusers"
-	validaterequests "github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/validaterequsts"
 	"github.com/Cwby333/url-shorter/pkg/generalerrors"
 	"github.com/go-playground/validator/v10"
 )
@@ -23,8 +24,41 @@ type ResponseUpdateURL struct {
 	URL string `json:"url"`
 }
 
+func newUpdateURLResponse(err error) ([]byte, error) {
+	const op = "internal/transport/httpsrv/urlsrouter/newUpdateURLResponse"
+
+	response := ResponseUpdateURL{
+		Response: mainresponse.NewError(err.Error()),
+	}
+
+	out, err := json.Marshal(response)
+
+	if err != nil {
+		return []byte{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return out, nil
+}
+
 func (router *Router) UpdateURL(w http.ResponseWriter, r *http.Request) {
-	logger := r.Context().Value("logger").(*slog.Logger)
+	logger, ok := r.Context().Value("logger").(*slog.Logger)
+
+	if !ok {
+		slog.Error("wrong type assertion to logger")
+
+		resp := mainresponse.NewError("internal error")
+		data, err := json.Marshal(resp)
+
+		if err != nil {
+			slog.Error("json marshal", slog.String("error", err.Error()))
+
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		http.Error(w, string(data), http.StatusInternalServerError)
+		return
+	}
 
 	logger = logger.With("component", "update url handler")
 
@@ -45,6 +79,8 @@ func (router *Router) UpdateURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, string(out), http.StatusInternalServerError)
 		return
 	}
+
+	r.Body.Close()
 
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
@@ -119,7 +155,28 @@ func (router *Router) UpdateURL(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Error("update url handler", slog.String("error", err.Error()))
 
-		w.Write([]byte("success"))
+		_, err := w.Write([]byte("success"))
+
+		if err != nil {
+			logger.Error("response write", slog.String("error", err.Error()))
+
+			resp := ResponseUpdateURL{
+				Response: mainresponse.NewError("internal error"),
+				URL:      "",
+			}
+			data, err := json.Marshal(resp)
+
+			if err != nil {
+				logger.Error("json marshal", slog.String("error", err.Error()))
+
+				http.Error(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+
+			http.Error(w, string(data), http.StatusInternalServerError)
+			return
+		}
+
 		return
 	}
 
@@ -129,19 +186,24 @@ func (router *Router) UpdateURL(w http.ResponseWriter, r *http.Request) {
 		logger.Error("cache", slog.String("error", err.Error()))
 	}
 
-	w.Write(data)
-}
-
-func newUpdateURLResponse(err error) ([]byte, error) {
-	response := ResponseUpdateURL{
-		Response: mainresponse.NewError(err.Error()),
-	}
-
-	out, err := json.Marshal(response)
+	_, err = w.Write(data)
 
 	if err != nil {
-		return []byte{}, err
-	}
+		logger.Error("response write", slog.String("error", err.Error()))
 
-	return out, nil
+		resp := ResponseUpdateURL{
+			Response: mainresponse.NewError("internal error"),
+			URL:      "",
+		}
+		data, err := json.Marshal(resp)
+
+		if err != nil {
+			logger.Error("json marshal", slog.String("error", err.Error()))
+
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		http.Error(w, string(data), http.StatusInternalServerError)
+	}
 }

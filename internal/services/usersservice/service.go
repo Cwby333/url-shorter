@@ -50,7 +50,6 @@ func New(repo UsersRepository, invalidator RefreshInvalidator, logger logger.Log
 		logger.Error("nil interface in repo")
 
 		return UserService{}, fmt.Errorf("%s: %w", op, generalerrors.ErrNilPointerInInterface)
-
 	}
 
 	return UserService{

@@ -6,9 +6,9 @@ import (
 	"log/slog"
 	"net/http"
 
+	validaterequests "github.com/Cwby333/url-shorter/internal/transport/httpsrv/lib/validaterequsts"
 	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/mainresponse"
 	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/respforusers"
-	validaterequests "github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/validaterequsts"
 	"github.com/Cwby333/url-shorter/pkg/generalerrors"
 
 	"github.com/go-playground/validator/v10"
@@ -26,7 +26,25 @@ type RegisterResponse struct {
 }
 
 func (router Router) Register(w http.ResponseWriter, r *http.Request) {
-	logger := r.Context().Value("logger").(*slog.Logger)
+	logger, ok := r.Context().Value("logger").(*slog.Logger)
+
+	if !ok {
+		slog.Error("wrong type assertion to logger")
+
+		resp := mainresponse.NewError("internal error")
+		data, err := json.Marshal(resp)
+
+		if err != nil {
+			slog.Error("json marshal", slog.String("error", err.Error()))
+
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		http.Error(w, string(data), http.StatusInternalServerError)
+		return
+	}
+
 	logger = logger.With("component", "register handler")
 
 	var request RegisterRequest
@@ -48,6 +66,8 @@ func (router Router) Register(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, string(resp), http.StatusUnauthorized)
 		return
 	}
+
+	r.Body.Close()
 
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
@@ -90,7 +110,6 @@ func (router Router) Register(w http.ResponseWriter, r *http.Request) {
 	uuid, err := router.service.CreateUser(r.Context(), request.Username, request.Password)
 
 	if err != nil {
-
 		if errors.Is(err, generalerrors.ErrUsernameAlreadyExists) {
 			logger.Info("username already exists", slog.String("username", request.Username))
 
@@ -139,7 +158,27 @@ func (router Router) Register(w http.ResponseWriter, r *http.Request) {
 
 	logger.Info("success create handler")
 
-	w.Write(out)
+	_, err = w.Write(out)
+
+	if err != nil {
+		logger.Error("response write", slog.String("error", err.Error()))
+
+		resp := RegisterResponse{
+			Response: mainresponse.NewError("internal error"),
+			UUID:     "",
+			Username: "",
+		}
+		data, err := json.Marshal(resp)
+
+		if err != nil {
+			logger.Error("json marshal", slog.String("error", err.Error()))
+
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		http.Error(w, string(data), http.StatusInternalServerError)
+	}
 }
 
 func newCreateResponse(err error) ([]byte, error) {

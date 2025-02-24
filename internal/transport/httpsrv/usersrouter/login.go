@@ -3,11 +3,12 @@ package usersrouter
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 
+	validaterequests "github.com/Cwby333/url-shorter/internal/transport/httpsrv/lib/validaterequsts"
 	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/mainresponse"
-	validaterequests "github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/validaterequsts"
 	"github.com/Cwby333/url-shorter/pkg/generalerrors"
 
 	"github.com/go-playground/validator/v10"
@@ -22,8 +23,42 @@ type LoginResponse struct {
 	Response mainresponse.Response
 }
 
+func newLoginResponse(err error) ([]byte, error) {
+	const op = "internal/transport/httpsrv/usersrouter/login.go/newSaveResponse"
+
+	resp := LoginResponse{
+		Response: mainresponse.NewError(err.Error()),
+	}
+
+	out, err := json.Marshal(resp)
+
+	if err != nil {
+		return []byte{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return out, nil
+}
+
 func (router Router) Login(w http.ResponseWriter, r *http.Request) {
-	logger := r.Context().Value("logger").(*slog.Logger)
+	logger, ok := r.Context().Value("logger").(*slog.Logger)
+
+	if !ok {
+		slog.Error("wrong type assertion to logger")
+
+		resp := mainresponse.NewError("internal error")
+		data, err := json.Marshal(resp)
+
+		if err != nil {
+			slog.Error("json marshal", slog.String("error", err.Error()))
+
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		http.Error(w, string(data), http.StatusInternalServerError)
+		return
+	}
+
 	logger = logger.With("component", "login handler")
 
 	var req LoginRequest
@@ -47,6 +82,8 @@ func (router Router) Login(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
+
+	r.Body.Close()
 
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
@@ -133,7 +170,11 @@ func (router Router) Login(w http.ResponseWriter, r *http.Request) {
 		logger.Error("json marshal", slog.String("error", err.Error()))
 		logger.Info("success login handler")
 
-		w.Write([]byte("Success login"))
+		_, err = w.Write([]byte("success login"))
+
+		if err != nil {
+			logger.Error("response writer", slog.String("error", err.Error()))
+		}
 
 		http.SetCookie(w, &http.Cookie{
 			Name:     "jwt-access",
@@ -168,19 +209,22 @@ func (router Router) Login(w http.ResponseWriter, r *http.Request) {
 		Path:     "/api/users/refresh",
 	})
 
-	w.Write(data)
-}
-
-func newLoginResponse(err error) ([]byte, error) {
-	resp := LoginResponse{
-		Response: mainresponse.NewError(err.Error()),
-	}
-
-	out, err := json.Marshal(resp)
+	_, err = w.Write(data)
 
 	if err != nil {
-		return []byte{}, err
-	}
+		logger.Error("response writer", slog.String("error", err.Error()))
 
-	return out, nil
+		resp := mainresponse.NewError("internal error")
+		data, err := json.Marshal(resp)
+
+		if err != nil {
+			logger.Error("json marshal", slog.String("error", err.Error()))
+
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		http.Error(w, string(data), http.StatusInternalServerError)
+		return
+	}
 }

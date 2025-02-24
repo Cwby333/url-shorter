@@ -16,6 +16,15 @@ import (
 )
 
 const (
+	ReadOnlyAccessMode  = "read only"
+	ReadWriteAccessMode = "read write"
+)
+
+const (
+	ErrNoRowsInCollectRow = "no rows in result set"
+)
+
+const (
 	insertAliasQuery   = `INSERT INTO urls_alias(url, alias) VALUES($1, $2) RETURNING ID`
 	selectURLItemQuery = `SELECT ID, url, alias FROM urls_alias WHERE alias = $1`
 	deleteURLQuery     = `DELETE FROM urls_alias WHERE alias = $1`
@@ -64,7 +73,7 @@ func (conn Postgres) Close() {
 
 func (conn Postgres) SaveAlias(ctx context.Context, url, alias string) (id int, err error) {
 	const op = "repository/postgres/SaveAlias"
-	tx, err := conn.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead})
+	tx, err := conn.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: ReadWriteAccessMode})
 
 	if err != nil {
 		return -1, fmt.Errorf("%s: %w", op, err)
@@ -91,8 +100,13 @@ func (conn Postgres) SaveAlias(ctx context.Context, url, alias string) (id int, 
 	}
 
 	for rows.Next() {
-		rows.Scan(&id)
+		err = rows.Scan(&id)
+
+		if err != nil {
+			return -1, fmt.Errorf("%s: %w", op, err)
+		}
 	}
+
 	rows.Close()
 
 	if rows.CommandTag().RowsAffected() < 1 {
@@ -104,7 +118,7 @@ func (conn Postgres) SaveAlias(ctx context.Context, url, alias string) (id int, 
 
 func (conn Postgres) GetURL(ctx context.Context, alias string) (url string, err error) {
 	const op = "repo/postgresql/postgres.go.GetURL"
-	tx, err := conn.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
+	tx, err := conn.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted, AccessMode: ReadOnlyAccessMode})
 
 	if err != nil {
 		return "", fmt.Errorf("%s: %w", op, err)
@@ -127,21 +141,21 @@ func (conn Postgres) GetURL(ctx context.Context, alias string) (url string, err 
 	rows, err := tx.Query(ctx, selectURLItemQuery, alias)
 
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return "", fmt.Errorf("%s: %w", op, generalerrors.ErrAliasNotFound)
 		}
 
-		return "", fmt.Errorf("%s:%v", op, err)
+		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
 	urlItem, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[urls.URL])
 
 	if err != nil {
-		if err.Error() == "no rows in result set" {
+		if err.Error() == ErrNoRowsInCollectRow {
 			return "", fmt.Errorf("%s: %w", op, generalerrors.ErrAliasNotFound)
 		}
 
-		return "", fmt.Errorf("%s:%v", op, err)
+		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
 	return urlItem.URL, nil
@@ -149,10 +163,10 @@ func (conn Postgres) GetURL(ctx context.Context, alias string) (url string, err 
 
 func (conn Postgres) DeleteURL(ctx context.Context, alias string) (err error) {
 	const op = "repo/postgresql/postgres.go.DeleteURL"
-	tx, err := conn.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead})
+	tx, err := conn.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: ReadWriteAccessMode})
 
 	if err != nil {
-		return fmt.Errorf("%s:%v", op, err)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	defer func() {
@@ -172,8 +186,9 @@ func (conn Postgres) DeleteURL(ctx context.Context, alias string) (err error) {
 	rows, err := tx.Query(ctx, deleteURLQuery, alias)
 
 	if err != nil {
-		return fmt.Errorf("%s:%v", op, err)
+		return fmt.Errorf("%s: %w", op, err)
 	}
+
 	rows.Close()
 
 	return nil
@@ -181,7 +196,7 @@ func (conn Postgres) DeleteURL(ctx context.Context, alias string) (err error) {
 
 func (conn Postgres) UpdateURL(ctx context.Context, newURL, alias string) (err error) {
 	const op = "repo/postgresql/postgres.go.DeleteURL"
-	tx, err := conn.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead})
+	tx, err := conn.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: ReadWriteAccessMode})
 
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
@@ -206,6 +221,7 @@ func (conn Postgres) UpdateURL(ctx context.Context, newURL, alias string) (err e
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
+
 	rows.Close()
 
 	if rows.CommandTag().RowsAffected() < 1 {
@@ -218,7 +234,7 @@ func (conn Postgres) UpdateURL(ctx context.Context, newURL, alias string) (err e
 func (conn Postgres) CreateUser(ctx context.Context, username string, password string) (uuid string, err error) {
 	const op = "internal/repo/postgres/CreateUser"
 
-	tx, err := conn.pool.Begin(ctx)
+	tx, err := conn.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: ReadWriteAccessMode})
 
 	if err != nil {
 		return "", fmt.Errorf("%s: %w", op, err)
@@ -233,7 +249,7 @@ func (conn Postgres) CreateUser(ctx context.Context, username string, password s
 		}
 
 		if err == nil && e != nil {
-			err = fmt.Errorf("transaction finis: %s: %w", op, err)
+			err = fmt.Errorf("transaction finis: %s: %w", op, e)
 		}
 	}()
 
@@ -246,8 +262,13 @@ func (conn Postgres) CreateUser(ctx context.Context, username string, password s
 	var id string
 
 	for rows.Next() {
-		rows.Scan(&id)
+		err = rows.Scan(&id)
+
+		if err != nil {
+			return "", fmt.Errorf("%s: %w", op, err)
+		}
 	}
+
 	rows.Close()
 
 	if rows.CommandTag().RowsAffected() < 1 {
@@ -260,7 +281,7 @@ func (conn Postgres) CreateUser(ctx context.Context, username string, password s
 func (conn Postgres) GetUserByUUID(ctx context.Context, uuid string) (user users.User, err error) {
 	const op = "internal/repo/postgres/CreateUser"
 
-	tx, err := conn.pool.Begin(ctx)
+	tx, err := conn.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted, AccessMode: ReadOnlyAccessMode})
 
 	if err != nil {
 		return users.User{}, fmt.Errorf("%s: %w", op, err)
@@ -275,24 +296,24 @@ func (conn Postgres) GetUserByUUID(ctx context.Context, uuid string) (user users
 		}
 
 		if err == nil && e != nil {
-			err = fmt.Errorf("transaction finis: %s: %w", op, err)
+			err = fmt.Errorf("transaction finis: %s: %w", op, e)
 		}
 	}()
 
 	rows, err := tx.Query(ctx, selectUserByUUIDQuery, uuid)
 
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return users.User{}, fmt.Errorf("%s: %w", op, generalerrors.ErrAliasNotFound)
 		}
 
-		return users.User{}, fmt.Errorf("%s:%v", op, err)
+		return users.User{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	user, err = pgx.CollectOneRow(rows, pgx.RowToStructByName[users.User])
 
 	if err != nil {
-		if err.Error() == "no rows in result set" {
+		if err.Error() == ErrNoRowsInCollectRow {
 			return users.User{}, fmt.Errorf("%s: %w", op, generalerrors.ErrUserNotFound)
 		}
 
@@ -305,7 +326,7 @@ func (conn Postgres) GetUserByUUID(ctx context.Context, uuid string) (user users
 func (conn Postgres) GetUserByUsername(ctx context.Context, username string) (user users.User, err error) {
 	const op = "internal/repository/postgres/GetUserByUsername"
 
-	tx, err := conn.pool.Begin(ctx)
+	tx, err := conn.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted, AccessMode: ReadOnlyAccessMode})
 
 	if err != nil {
 		return users.User{}, fmt.Errorf("%s: %w", op, err)
@@ -320,7 +341,7 @@ func (conn Postgres) GetUserByUsername(ctx context.Context, username string) (us
 		}
 
 		if err == nil && e != nil {
-			err = fmt.Errorf("transaction finis: %s: %w", op, err)
+			err = fmt.Errorf("transaction finis: %s: %w", op, e)
 		}
 	}()
 
@@ -337,7 +358,7 @@ func (conn Postgres) GetUserByUsername(ctx context.Context, username string) (us
 	user, err = pgx.CollectOneRow(rows, pgx.RowToStructByName[users.User])
 
 	if err != nil {
-		if err.Error() == "no rows in result set" {
+		if err.Error() == ErrNoRowsInCollectRow {
 			return users.User{}, fmt.Errorf("%s: %w", op, generalerrors.ErrUserNotFound)
 		}
 	}
@@ -348,7 +369,7 @@ func (conn Postgres) GetUserByUsername(ctx context.Context, username string) (us
 func (conn Postgres) ChangeCredentials(ctx context.Context, newUsername string, newPassword string, username string) (user users.User, err error) {
 	const op = "internal/repository/postgres/ChangeCredentials"
 
-	tx, err := conn.pool.Begin(ctx)
+	tx, err := conn.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: ReadWriteAccessMode})
 
 	if err != nil {
 		return users.User{}, fmt.Errorf("%s: %w", op, err)
@@ -363,7 +384,7 @@ func (conn Postgres) ChangeCredentials(ctx context.Context, newUsername string, 
 		}
 
 		if err == nil && e != nil {
-			err = fmt.Errorf("%s: %w", op, err)
+			err = fmt.Errorf("%s:finishing transaction %w", op, e)
 		}
 	}()
 
@@ -384,6 +405,7 @@ func (conn Postgres) ChangeCredentials(ctx context.Context, newUsername string, 
 	if err != nil {
 		return users.User{}, fmt.Errorf("%s: %w", op, err)
 	}
+
 	rows.Close()
 
 	return user, nil
@@ -392,7 +414,26 @@ func (conn Postgres) ChangeCredentials(ctx context.Context, newUsername string, 
 func (conn Postgres) BlockUser(ctx context.Context, uuid string) error {
 	const op = "internal/repository/postgres/BlockUser"
 
-	_, err := conn.GetUserByUUID(ctx, uuid)
+	tx, err := conn.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: ReadWriteAccessMode})
+
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	defer func() {
+		var e error
+
+		if err != nil {
+			e = tx.Rollback(ctx)
+		} else {
+			e = tx.Commit(ctx)
+		}
+
+		if err == nil && e != nil {
+			err = fmt.Errorf("%s:finishing transaction %w", op, e)
+		}
+	}()
+
+	_, err = conn.GetUserByUUID(ctx, uuid)
 
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
@@ -403,6 +444,7 @@ func (conn Postgres) BlockUser(ctx context.Context, uuid string) error {
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
+
 	rows.Close()
 
 	return nil

@@ -16,7 +16,7 @@ func Validate(errors validator.ValidationErrors) []string {
 
 			out = append(out, str)
 		case "url":
-			str := fmt.Sprint("invalid url")
+			str := "invalid url"
 
 			out = append(out, str)
 		}

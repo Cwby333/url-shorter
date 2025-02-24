@@ -26,12 +26,12 @@ func New(ctx context.Context, cfg config.Redis) (Redis, error) {
 
 	select {
 	case <-ctx.Done():
-		return Redis{}, ctx.Err()
+		return Redis{}, fmt.Errorf("%s: %w", op, ctx.Err())
 	default:
 	}
 
 	client := redis.NewClient(&redis.Options{
-		Addr:     cfg.Host + ":" + fmt.Sprintf("%d", cfg.Port),
+		Addr:     cfg.Host + ":" + strconv.Itoa(cfg.Port),
 		Username: cfg.Username,
 		Password: cfg.Password,
 		DB:       cfg.DB,
@@ -45,9 +45,8 @@ func New(ctx context.Context, cfg config.Redis) (Redis, error) {
 
 	return Redis{
 		client: client,
-		urlTTL: cfg.UrlTTL,
+		urlTTL: cfg.URLTTL,
 	}, nil
-
 }
 
 func (r Redis) Close() {

@@ -12,20 +12,42 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+const (
+	forMultiplicationToUnitTime = 1000000000
+)
+
 type RefreshTokensResponse struct {
 	Response mainresponse.Response
 	Message  string `json:"message"`
 }
 
 func (router Router) RefreshTokens(w http.ResponseWriter, r *http.Request) {
-	logger := r.Context().Value("logger").(*slog.Logger)
+	logger, ok := r.Context().Value("logger").(*slog.Logger)
+
+	if !ok {
+		slog.Error("wrong type assertion to logger")
+
+		resp := mainresponse.NewError("internal error")
+		data, err := json.Marshal(resp)
+
+		if err != nil {
+			slog.Error("json marshal", slog.String("error", err.Error()))
+
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		http.Error(w, string(data), http.StatusInternalServerError)
+		return
+	}
+
 	logger = logger.With("component", "refresh tokens handler")
 
 	claims := r.Context().Value("claims").(jwt.MapClaims)
 	tokenID := claims["jti"].(string)
 	sub := claims["sub"].(string)
-	dur := time.Duration(int64(claims["exp"].(float64) * 1000000000)).Seconds()
-	dur = (dur - float64(time.Now().Unix())) * 1000000000
+	dur := time.Duration(int64(claims["exp"].(float64) * forMultiplicationToUnitTime)).Seconds()
+	dur = (dur - float64(time.Now().Unix())) * forMultiplicationToUnitTime
 
 	err := router.service.CheckCountOfUses(r.Context(), tokenID, time.Duration(dur))
 
@@ -198,7 +220,11 @@ func (router Router) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 		logger.Error("json marshal", slog.String("error", err.Error()))
 		logger.Info("success login handler")
 
-		w.Write([]byte("Success login"))
+		_, err = w.Write([]byte("Success login"))
+
+		if err != nil {
+			logger.Error("response write", slog.String("error", err.Error()))
+		}
 
 		http.SetCookie(w, &http.Cookie{
 			Name:     "jwt-access",
@@ -252,5 +278,9 @@ func (router Router) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 
 	logger.Info("success refresh handler")
 
-	w.Write(data)
+	_, err = w.Write(data)
+
+	if err != nil {
+		logger.Error("response write")
+	}
 }

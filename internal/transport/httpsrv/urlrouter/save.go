@@ -3,13 +3,14 @@ package urlrouter
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
-	"math/rand"
+	"math/rand/v2"
 	"net/http"
 
+	validaterequests "github.com/Cwby333/url-shorter/internal/transport/httpsrv/lib/validaterequsts"
 	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/mainresponse"
 	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/respforusers"
-	validaterequests "github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/validaterequsts"
 	"github.com/Cwby333/url-shorter/pkg/generalerrors"
 	"github.com/go-playground/validator/v10"
 )
@@ -34,6 +35,8 @@ type ResponseSave struct {
 }
 
 func newSaveResponse(err error) ([]byte, error) {
+	const op = "internal/transport/httpsrv/urlrouter/save.go/newResponseSave"
+
 	response := ResponseSave{
 		ID:       -1,
 		Response: mainresponse.NewError(err.Error()),
@@ -42,14 +45,31 @@ func newSaveResponse(err error) ([]byte, error) {
 	out, err := json.Marshal(response)
 
 	if err != nil {
-		return []byte{}, err
+		return []byte{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return out, nil
 }
 
 func (router *Router) Save(w http.ResponseWriter, r *http.Request) {
-	logger := r.Context().Value("logger").(*slog.Logger)
+	logger, ok := r.Context().Value("logger").(*slog.Logger)
+
+	if !ok {
+		slog.Error("wrong type assertion to logger")
+
+		resp := mainresponse.NewError("internal error")
+		data, err := json.Marshal(resp)
+
+		if err != nil {
+			slog.Error("json marshal", slog.String("error", err.Error()))
+
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		http.Error(w, string(data), http.StatusInternalServerError)
+		return
+	}
 
 	logger = logger.With("component", "save handler")
 
@@ -74,6 +94,7 @@ func (router *Router) Save(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
+
 	r.Body.Close()
 
 	validate := validator.New(validator.WithRequiredStructEnabled())
@@ -123,7 +144,7 @@ func (router *Router) Save(w http.ResponseWriter, r *http.Request) {
 		out := make([]rune, 0, aliasRandLength)
 
 		for range aliasRandLength {
-			out = append(out, data[rand.Intn(len(data))])
+			out = append(out, data[rand.Int64N(int64(len(data)))])
 		}
 
 		req.Alias = string(out)
@@ -178,7 +199,7 @@ func (router *Router) Save(w http.ResponseWriter, r *http.Request) {
 		Alias:    req.Alias,
 	}
 
-	responseJson, err := json.Marshal(resp)
+	responseJSON, err := json.Marshal(resp)
 
 	if err != nil {
 		out, err := newSaveResponse(errors.New("internal error"))
@@ -198,6 +219,11 @@ func (router *Router) Save(w http.ResponseWriter, r *http.Request) {
 
 	logger.Info("success handle request")
 
-	w.WriteHeader(http.StatusOK)
-	w.Write(responseJson)
+	_, err = w.Write(responseJSON)
+
+	if err != nil {
+		logger.Error("write response", slog.String("error", err.Error()))
+
+		http.Error(w, "internal error", http.StatusInternalServerError)
+	}
 }

@@ -20,7 +20,25 @@ type LogoutResponse struct {
 }
 
 func (router Router) Logout(w http.ResponseWriter, r *http.Request) {
-	logger := r.Context().Value("logger").(*slog.Logger)
+	logger, ok := r.Context().Value("logger").(*slog.Logger)
+
+	if !ok {
+		slog.Error("wrong type assertion to logger")
+
+		resp := mainresponse.NewError("internal error")
+		data, err := json.Marshal(resp)
+
+		if err != nil {
+			slog.Error("json marshal", slog.String("error", err.Error()))
+
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		http.Error(w, string(data), http.StatusInternalServerError)
+		return
+	}
+
 	logger = logger.With("component", "logout handler")
 
 	claims := r.Context().Value("claims").(jwt.MapClaims)
@@ -56,11 +74,32 @@ func (router Router) Logout(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Error("json marshal", slog.String("error", err.Error()))
 
-		w.Write([]byte("success logout"))
+		_, err = w.Write([]byte("success logout"))
+
+		if err != nil {
+			logger.Error("response write", slog.String("error", err.Error()))
+		}
+
 		return
 	}
 
 	logger.Info("success logout")
 
-	w.Write(data)
+	_, err = w.Write(data)
+
+	if err != nil {
+		logger.Error("response write", slog.String("error", err.Error()))
+
+		resp := mainresponse.NewError("internal error")
+		data, err := json.Marshal(resp)
+
+		if err != nil {
+			logger.Error("json marshal", slog.String("error", err.Error()))
+
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		http.Error(w, string(data), http.StatusInternalServerError)
+	}
 }

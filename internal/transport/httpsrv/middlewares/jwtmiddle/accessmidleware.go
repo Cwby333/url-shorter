@@ -14,7 +14,25 @@ import (
 
 func NewAccess(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		logger := r.Context().Value("logger").(*slog.Logger)
+		logger, ok := r.Context().Value("logger").(*slog.Logger)
+
+		if !ok {
+			slog.Error("wrong type assertion to logger")
+
+			resp := mainresponse.NewError("internal error")
+			data, err := json.Marshal(resp)
+
+			if err != nil {
+				slog.Error("json marshal", slog.String("error", err.Error()))
+
+				http.Error(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+
+			http.Error(w, string(data), http.StatusInternalServerError)
+			return
+		}
+
 		logger = logger.With("component", "json middleware")
 
 		tokenString := r.Header.Get("Authorization")
@@ -43,7 +61,11 @@ func NewAccess(next http.Handler) http.Handler {
 
 		t, err := jwt.ParseWithClaims(tokenString, jwt.MapClaims{}, func(t *jwt.Token) (interface{}, error) {
 			return []byte(secretKey), nil
-		}, jwt.WithIssuer(os.Getenv("APP_JWT_ISSUER")), jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}), jwt.WithExpirationRequired(), jwt.WithIssuer(os.Getenv("APP_JWT_ISSUER")))
+		},
+			jwt.WithIssuer(os.Getenv("APP_JWT_ISSUER")),
+			jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}),
+			jwt.WithExpirationRequired(),
+			jwt.WithIssuer(os.Getenv("APP_JWT_ISSUER")))
 
 		if err != nil {
 			logger.Info("jwt parse", slog.String("error", err.Error()))
@@ -101,7 +123,26 @@ func NewAccess(next http.Handler) http.Handler {
 			return
 		}
 
-		if claims["type"] != "access" {
+		typeToken, ok := claims["type"].(string)
+
+		if !ok {
+			logger.Error("type assertion error")
+
+			resp := mainresponse.NewError("internal error")
+			data, err := json.Marshal(resp)
+
+			if err != nil {
+				logger.Error("json marshal", slog.String("error", err.Error()))
+
+				http.Error(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+
+			http.Error(w, string(data), http.StatusInternalServerError)
+			return
+		}
+
+		if typeToken != "access" {
 			logger.Info("wrong token type")
 
 			resp := mainresponse.NewError("unauthorized")

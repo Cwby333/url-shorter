@@ -22,7 +22,7 @@ type UsersService interface {
 
 	LogIn(ctx context.Context, username string, password string) (accessClaims tokens.JWTAccessClaims, refreshClaims tokens.JWTRefreshClaims, err error)
 
-	LogOut(ctx context.Context, tokenId string, ttl time.Duration) error
+	LogOut(ctx context.Context, tokenID string, ttl time.Duration) error
 
 	CreateJWT(ctx context.Context, subject string) (accessClaims tokens.JWTAccessClaims, refreshClaims tokens.JWTRefreshClaims, err error)
 
