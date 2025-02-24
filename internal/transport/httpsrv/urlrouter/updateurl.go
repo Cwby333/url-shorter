@@ -15,11 +15,12 @@ import (
 
 type RequestUpdateURL struct {
 	Alias  string `json:"alias" validate:"required"`
-	NewURL string `json:"url" validate:":required"`
+	NewURL string `json:"url" validate:"required"`
 }
 
 type ResponseUpdateURL struct {
 	mainresponse.Response
+	URL string `json:"url"`
 }
 
 func (router *Router) UpdateURL(w http.ResponseWriter, r *http.Request) {
@@ -38,12 +39,10 @@ func (router *Router) UpdateURL(w http.ResponseWriter, r *http.Request) {
 			logger.Error("json marshal", slog.String("error", err.Error()))
 
 			http.Error(w, respforusers.ErrInternalError, http.StatusInternalServerError)
-
 			return
 		}
 
 		http.Error(w, string(out), http.StatusInternalServerError)
-
 		return
 	}
 
@@ -73,19 +72,16 @@ func (router *Router) UpdateURL(w http.ResponseWriter, r *http.Request) {
 				logger.Error("json marshall", slog.String("error", err.Error()))
 
 				http.Error(w, "bad request", http.StatusBadRequest)
-
 				return
 			}
 
 			http.Error(w, string(out), http.StatusBadRequest)
-
 			return
 		}
 
 		logger.Debug("bad request")
 
 		http.Error(w, string(data), http.StatusBadRequest)
-
 		return
 	}
 
@@ -104,19 +100,18 @@ func (router *Router) UpdateURL(w http.ResponseWriter, r *http.Request) {
 			}
 
 			http.Error(w, string(out), http.StatusNotFound)
-
 			return
 		}
 
 		logger.Error("update url handler", slog.String("error", err.Error()))
 
 		http.Error(w, "internal error", http.StatusInternalServerError)
-
 		return
 	}
 
 	response := ResponseUpdateURL{
 		Response: mainresponse.NewOK(),
+		URL:      req.NewURL,
 	}
 
 	data, err := json.Marshal(response)
@@ -125,13 +120,16 @@ func (router *Router) UpdateURL(w http.ResponseWriter, r *http.Request) {
 		logger.Error("update url handler", slog.String("error", err.Error()))
 
 		w.Write([]byte("success"))
-		w.WriteHeader(http.StatusOK)
-
 		return
 	}
 
+	err = router.urlService.SaveResponseInCache(r.Context(), req.Alias, string(data))
+
+	if err != nil {
+		logger.Error("cache", slog.String("error", err.Error()))
+	}
+
 	w.Write(data)
-	w.WriteHeader(http.StatusOK)
 }
 
 func newUpdateURLResponse(err error) ([]byte, error) {

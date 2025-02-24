@@ -46,12 +46,12 @@ type Database struct {
 }
 
 type Redis struct {
-	Host     string `yaml:"host"`
-	Username string `yaml:"username"`
-	Port     int    `yaml:"port"`
-	Password string `yaml:"password"`
-	DB       int    `yaml:"db"`
-	UrlTTL time.Duration `yaml:"url-ttl"`
+	Host     string        `yaml:"host"`
+	Username string        `yaml:"username"`
+	Port     int           `yaml:"port"`
+	Password string        `yaml:"password"`
+	DB       int           `yaml:"db"`
+	UrlTTL   time.Duration `yaml:"url-ttl"`
 }
 
 type JWT struct {

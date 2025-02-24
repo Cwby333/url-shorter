@@ -3,7 +3,6 @@ package jwtmiddle
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -83,7 +82,6 @@ func NewAccess(next http.Handler) http.Handler {
 		}
 
 		claims, ok := t.Claims.(jwt.MapClaims)
-		log.Println(claims)
 
 		if !ok {
 			logger.Error("wrong type assertion to jwt.MapClaims")

@@ -61,23 +61,23 @@ func (app App) Run() {
 		pool.Close()
 	}()
 
-	urlService, err := urlsservice.New(pool, logger)
-
-	if err != nil {
-		logger.Error("", slog.String("error", err.Error()))
-		return
-	}
-
 	client, err := myredis.New(ctx, cfg.Redis)
 
 	if err != nil {
 		logger.Error("", slog.String("error", err.Error()))
 		return
 	}
-	defer func ()  {
+	defer func() {
 		logger.Info("close cache connect")
 		client.Close()
 	}()
+
+	urlService, err := urlsservice.New(pool, client, logger)
+
+	if err != nil {
+		logger.Error("", slog.String("error", err.Error()))
+		return
+	}
 
 	userService, err := usersservice.New(pool, client, logger, cfg.JWT)
 
