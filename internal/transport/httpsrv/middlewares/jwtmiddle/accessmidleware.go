@@ -3,7 +3,6 @@ package jwtmiddle
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -44,7 +43,7 @@ func NewAccess(next http.Handler) http.Handler {
 
 		t, err := jwt.ParseWithClaims(tokenString, jwt.MapClaims{}, func(t *jwt.Token) (interface{}, error) {
 			return []byte(secretKey), nil
-		}, jwt.WithIssuer(os.Getenv("APP_JWT_ISSUER")), jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}), jwt.WithExpirationRequired())
+		}, jwt.WithIssuer(os.Getenv("APP_JWT_ISSUER")), jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}), jwt.WithExpirationRequired(), jwt.WithIssuer(os.Getenv("APP_JWT_ISSUER")))
 
 		if err != nil {
 			logger.Info("jwt parse", slog.String("error", err.Error()))
@@ -83,7 +82,6 @@ func NewAccess(next http.Handler) http.Handler {
 		}
 
 		claims, ok := t.Claims.(jwt.MapClaims)
-		log.Println(claims)
 
 		if !ok {
 			logger.Error("wrong type assertion to jwt.MapClaims")

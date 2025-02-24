@@ -9,7 +9,7 @@ import (
 	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/mainresponse"
 	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/respforusers"
 	validaterequests "github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/validaterequsts"
-	
+
 	"github.com/go-playground/validator/v10"
 )
 
@@ -123,6 +123,14 @@ func (router *Router) Delete(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, string(out), http.StatusInternalServerError)
 
 		return
+	}
+
+	logger.Info("success delete handler")
+
+	err = router.urlService.RemoveResponseFromCache(r.Context(), req.Alias)
+
+	if err != nil {
+		logger.Error("cache", slog.String("error", err.Error()))
 	}
 
 	w.Write([]byte("Success deleted"))

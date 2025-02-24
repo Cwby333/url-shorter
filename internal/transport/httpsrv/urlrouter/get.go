@@ -45,7 +45,6 @@ func (router *Router) Get(w http.ResponseWriter, r *http.Request) {
 	logger = logger.With("component", "get handler")
 
 	var req RequestGet
-
 	err := json.NewDecoder(r.Body).Decode(&req)
 
 	if err != nil {
@@ -57,12 +56,10 @@ func (router *Router) Get(w http.ResponseWriter, r *http.Request) {
 			logger.Error("json marshall", slog.String("error", err.Error()))
 
 			http.Error(w, respforusers.ErrInternalError, http.StatusInternalServerError)
-
 			return
 		}
 
 		http.Error(w, string(out), http.StatusInternalServerError)
-
 		return
 	}
 	r.Body.Close()
@@ -75,14 +72,11 @@ func (router *Router) Get(w http.ResponseWriter, r *http.Request) {
 		logger.Info("bad request", slog.String("error", err.Error()))
 
 		errorsValidate := err.(validator.ValidationErrors)
-
 		errForResp := validaterequests.Validate(errorsValidate)
-
 		response := ResponseGet{
 			URL:      "",
 			Response: mainresponse.NewError(errForResp...),
 		}
-
 		data, err := json.Marshal(response)
 
 		if err != nil {
@@ -94,19 +88,33 @@ func (router *Router) Get(w http.ResponseWriter, r *http.Request) {
 				logger.Error("json marshall", slog.String("error", err.Error()))
 
 				http.Error(w, "bad request", http.StatusInternalServerError)
-
 				return
 			}
 
 			http.Error(w, string(out), http.StatusInternalServerError)
-
 			return
 		}
 
 		logger.Debug("bad request")
 
 		http.Error(w, string(data), http.StatusBadRequest)
+		return
+	}
 
+	response, err := router.urlService.GetResponseFromCache(r.Context(), req.Alias)
+
+	if err != nil {
+		if errors.Is(err, generalerrors.ErrCacheMiss) {
+			logger.Info("no found in cache", slog.String("alias", req.Alias))
+		} else {
+			logger.Error("cache", slog.String("error", err.Error()))
+		}
+
+		_ = response
+	} else {
+		logger.Info("success get handler, find from cache")
+
+		w.Write([]byte(response))
 		return
 	}
 
@@ -122,12 +130,10 @@ func (router *Router) Get(w http.ResponseWriter, r *http.Request) {
 				logger.Error("json marshall", slog.String("error", err.Error()))
 
 				http.Error(w, "alias not exist", http.StatusInternalServerError)
-
 				return
 			}
 
 			http.Error(w, string(out), http.StatusInternalServerError)
-
 			return
 		}
 
@@ -139,12 +145,10 @@ func (router *Router) Get(w http.ResponseWriter, r *http.Request) {
 			logger.Error("json marshall", slog.String("error", err.Error()))
 
 			http.Error(w, "internal error", http.StatusInternalServerError)
-
 			return
 		}
 
 		http.Error(w, string(out), http.StatusInternalServerError)
-
 		return
 	}
 
@@ -156,25 +160,18 @@ func (router *Router) Get(w http.ResponseWriter, r *http.Request) {
 	responseJson, err := json.Marshal(resp)
 
 	if err != nil {
-		logger.Error("json marshal error", slog.String("error", err.Error()))
-
-		out, err := newResponseGet(errors.New("internal error"))
-
-		if err != nil {
-			logger.Error("json marshall", slog.String("error", err.Error()))
-
-			http.Error(w, "internal error", http.StatusInternalServerError)
-
-			return
-		}
-
-		http.Error(w, string(out), http.StatusInternalServerError)
-
+		logger.Error("json marshal", slog.String("error", err.Error()))
+		http.Error(w, resp.URL, http.StatusInternalServerError)
 		return
+	}
+
+	err = router.urlService.SaveResponseInCache(r.Context(), req.Alias, string(responseJson))
+
+	if err != nil {
+		logger.Error("cache", slog.String("error", err.Error()))
 	}
 
 	logger.Info("success handle request")
 
-	w.WriteHeader(http.StatusOK)
 	w.Write(responseJson)
 }

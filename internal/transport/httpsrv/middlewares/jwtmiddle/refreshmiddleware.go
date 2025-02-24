@@ -40,7 +40,7 @@ func NewRefresh(next http.Handler) http.Handler {
 
 		t, err := jwt.ParseWithClaims(refreshToken, jwt.MapClaims{}, func(t *jwt.Token) (interface{}, error) {
 			return []byte(os.Getenv("APP_JWT_SECRET_KEY")), nil
-		}, jwt.WithIssuer(os.Getenv("APP_JWT_ISSUER")), jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}), jwt.WithExpirationRequired())
+		}, jwt.WithIssuer(os.Getenv("APP_JWT_ISSUER")), jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}), jwt.WithExpirationRequired(), jwt.WithIssuer(os.Getenv("APP_JWT_ISSUER")))
 
 		if err != nil {
 			logger.Info("jwt parse", slog.String("error", err.Error()))

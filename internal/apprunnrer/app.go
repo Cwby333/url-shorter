@@ -19,6 +19,11 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+const (
+	dev   = "dev"
+	local = "local"
+)
+
 type App struct {
 }
 
@@ -40,11 +45,11 @@ func (app App) Run() {
 		cancel()
 	}()
 
-	cfg, err := config.Load("dev")
+	cfg, err := config.Load(dev)
 
 	if err != nil {
 		log.Printf("config error: %v", err.Error())
-		return
+		panic(1)
 	}
 
 	logger := logger.New(cfg.Env)
@@ -61,23 +66,23 @@ func (app App) Run() {
 		pool.Close()
 	}()
 
-	urlService, err := urlsservice.New(pool, logger)
-
-	if err != nil {
-		logger.Error("", slog.String("error", err.Error()))
-		return
-	}
-
 	client, err := myredis.New(ctx, cfg.Redis)
 
 	if err != nil {
 		logger.Error("", slog.String("error", err.Error()))
 		return
 	}
-	defer func ()  {
+	defer func() {
 		logger.Info("close cache connect")
 		client.Close()
 	}()
+
+	urlService, err := urlsservice.New(pool, client, logger)
+
+	if err != nil {
+		logger.Error("", slog.String("error", err.Error()))
+		return
+	}
 
 	userService, err := usersservice.New(pool, client, logger, cfg.JWT)
 

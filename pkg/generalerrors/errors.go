@@ -5,16 +5,15 @@ import "errors"
 var (
 	ErrNilPointerInInterface = errors.New("nil pointer in interface")
 
-	ErrWrongPassword = errors.New("wrong password")
+	ErrWrongPassword         = errors.New("wrong password")
+	ErrUsernameAlreadyExists = errors.New("this username already exists")
+	ErrUserNotFound          = errors.New("user not found")
 
-	ErrUserNotFound = errors.New("user not found")
-
-	ErrRefreshInBlackList = errors.New("token found in blacklist")
-
+	ErrRefreshInBlackList      = errors.New("token found in blacklist")
 	ErrToManyUseOfRefreshToken = errors.New("to many uses of refresh token")
 
 	ErrAliasAlreadyExists = errors.New("alias already exists")
 	ErrAliasNotFound      = errors.New("alias not found")
 
-	ErrUsernameAlreadyExists = errors.New("this username already exists")
+	ErrCacheMiss = errors.New("not found in cache")
 )
