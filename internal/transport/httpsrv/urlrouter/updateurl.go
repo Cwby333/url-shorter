@@ -6,10 +6,10 @@ import (
 	"log/slog"
 	"net/http"
 
-	storageErrors "github.com/Cwby333/url-shorter/internal/repository/errors"
-	"github.com/Cwby333/url-shorter/internal/transport/httptransport/urlrouter/lib/mainresponse"
-	"github.com/Cwby333/url-shorter/internal/transport/httptransport/urlrouter/lib/respforusers"
-	validaterequests "github.com/Cwby333/url-shorter/internal/transport/httptransport/urlrouter/lib/validaterequsts"
+	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/mainresponse"
+	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/respforusers"
+	validaterequests "github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/validaterequsts"
+	"github.com/Cwby333/url-shorter/pkg/generalerrors"
 	"github.com/go-playground/validator/v10"
 )
 
@@ -92,7 +92,7 @@ func (router *Router) UpdateURL(w http.ResponseWriter, r *http.Request) {
 	err = router.urlService.UpdateURL(r.Context(), req.NewURL, req.Alias)
 
 	if err != nil {
-		if errors.Is(err, storageErrors.ErrAliasNotFound) {
+		if errors.Is(err, generalerrors.ErrAliasNotFound) {
 			logger.Debug("update url handler", slog.String("error", err.Error()))
 
 			out, err := newUpdateURLResponse(err)

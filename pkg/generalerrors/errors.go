@@ -12,4 +12,9 @@ var (
 	ErrRefreshInBlackList = errors.New("token found in blacklist")
 
 	ErrToManyUseOfRefreshToken = errors.New("to many uses of refresh token")
+
+	ErrAliasAlreadyExists = errors.New("alias already exists")
+	ErrAliasNotFound      = errors.New("alias not found")
+
+	ErrUsernameAlreadyExists = errors.New("this username already exists")
 )

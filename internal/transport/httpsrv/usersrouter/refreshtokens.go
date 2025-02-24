@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Cwby333/url-shorter/internal/transport/httptransport/urlrouter/lib/mainresponse"
+	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/mainresponse"
 	"github.com/Cwby333/url-shorter/pkg/generalerrors"
 	"github.com/golang-jwt/jwt/v5"
 )

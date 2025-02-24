@@ -18,6 +18,7 @@ const (
 
 type Redis struct {
 	client *redis.Client
+	urlTTL time.Duration
 }
 
 func New(ctx context.Context, cfg config.Redis) (Redis, error) {
@@ -44,7 +45,25 @@ func New(ctx context.Context, cfg config.Redis) (Redis, error) {
 
 	return Redis{
 		client: client,
+		urlTTL: cfg.UrlTTL,
 	}, nil
+
+}
+
+func (r Redis) Close() {
+	r.client.Close()
+}
+
+func (r Redis) SaveResponse(ctx context.Context, url string, response string) error {
+	const op = "internal/repository/redis/SaveResponse"
+
+	res := r.client.HSet(ctx, "urls", url, response)
+
+	if res.Err() != nil {
+		return fmt.Errorf("%s; %w", op, res.Err())
+	}
+
+	return nil
 }
 
 func (r Redis) InvalidRefresh(ctx context.Context, tokenID string, ttl time.Duration) error {

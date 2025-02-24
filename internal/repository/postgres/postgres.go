@@ -8,7 +8,6 @@ import (
 	"github.com/Cwby333/url-shorter/internal/config"
 	"github.com/Cwby333/url-shorter/internal/entity/urls"
 	"github.com/Cwby333/url-shorter/internal/entity/users"
-	storageErrors "github.com/Cwby333/url-shorter/internal/repository/errors"
 	"github.com/Cwby333/url-shorter/internal/repository/lib/dsn"
 	"github.com/Cwby333/url-shorter/pkg/generalerrors"
 
@@ -97,7 +96,7 @@ func (conn Postgres) SaveAlias(ctx context.Context, url, alias string) (id int, 
 	rows.Close()
 
 	if rows.CommandTag().RowsAffected() < 1 {
-		return -1, fmt.Errorf("%s: %w", op, storageErrors.ErrAliasAlreadyExists)
+		return -1, fmt.Errorf("%s: %w", op, generalerrors.ErrAliasAlreadyExists)
 	}
 
 	return id, nil
@@ -129,7 +128,7 @@ func (conn Postgres) GetURL(ctx context.Context, alias string) (url string, err 
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return "", fmt.Errorf("%s: %w", op, storageErrors.ErrAliasNotFound)
+			return "", fmt.Errorf("%s: %w", op, generalerrors.ErrAliasNotFound)
 		}
 
 		return "", fmt.Errorf("%s:%v", op, err)
@@ -139,7 +138,7 @@ func (conn Postgres) GetURL(ctx context.Context, alias string) (url string, err 
 
 	if err != nil {
 		if err.Error() == "no rows in result set" {
-			return "", fmt.Errorf("%s: %w", op, storageErrors.ErrAliasNotFound)
+			return "", fmt.Errorf("%s: %w", op, generalerrors.ErrAliasNotFound)
 		}
 
 		return "", fmt.Errorf("%s:%v", op, err)
@@ -210,7 +209,7 @@ func (conn Postgres) UpdateURL(ctx context.Context, newURL, alias string) (err e
 	rows.Close()
 
 	if rows.CommandTag().RowsAffected() < 1 {
-		return fmt.Errorf("%s: %w", op, storageErrors.ErrAliasNotFound)
+		return fmt.Errorf("%s: %w", op, generalerrors.ErrAliasNotFound)
 	}
 
 	return nil
@@ -252,7 +251,7 @@ func (conn Postgres) CreateUser(ctx context.Context, username string, password s
 	rows.Close()
 
 	if rows.CommandTag().RowsAffected() < 1 {
-		return "", fmt.Errorf("%s: %w", op, storageErrors.ErrUsernameAlreadyExists)
+		return "", fmt.Errorf("%s: %w", op, generalerrors.ErrUsernameAlreadyExists)
 	}
 
 	return id, nil
@@ -284,7 +283,7 @@ func (conn Postgres) GetUserByUUID(ctx context.Context, uuid string) (user users
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return users.User{}, fmt.Errorf("%s: %w", op, storageErrors.ErrAliasNotFound)
+			return users.User{}, fmt.Errorf("%s: %w", op, generalerrors.ErrAliasNotFound)
 		}
 
 		return users.User{}, fmt.Errorf("%s:%v", op, err)

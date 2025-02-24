@@ -7,9 +7,9 @@ import (
 	"sync"
 
 	"github.com/Cwby333/url-shorter/internal/logger"
-	"github.com/Cwby333/url-shorter/internal/transport/httptransport/middlewares/jwtmiddle"
-	"github.com/Cwby333/url-shorter/internal/transport/httptransport/middlewares/logging"
-	"github.com/Cwby333/url-shorter/internal/transport/httptransport/middlewares/requestid"
+	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/middlewares/jwtmiddle"
+	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/middlewares/logging"
+	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/middlewares/requestid"
 	"github.com/Cwby333/url-shorter/pkg/generalerrors"
 )
 
@@ -18,6 +18,10 @@ type URLService interface {
 	GetURL(ctx context.Context, alias string) (string, error)
 	DeleteURL(ctx context.Context, alias string) error
 	UpdateURL(ctx context.Context, alias, newURL string) error
+}
+
+type Cache interface {
+	
 }
 
 type Router struct {

@@ -8,9 +8,9 @@ import (
 
 	"github.com/Cwby333/url-shorter/internal/config"
 	"github.com/Cwby333/url-shorter/internal/logger"
-	"github.com/Cwby333/url-shorter/internal/transport/httptransport/registerrouters"
-	"github.com/Cwby333/url-shorter/internal/transport/httptransport/urlrouter"
-	"github.com/Cwby333/url-shorter/internal/transport/httptransport/usersrouter"
+	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/registerrouters"
+	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter"
+	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/usersrouter"
 )
 
 type Server struct {

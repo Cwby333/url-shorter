@@ -7,10 +7,10 @@ import (
 	"math/rand"
 	"net/http"
 
-	storageErrors "github.com/Cwby333/url-shorter/internal/repository/errors"
-	"github.com/Cwby333/url-shorter/internal/transport/httptransport/urlrouter/lib/mainresponse"
-	"github.com/Cwby333/url-shorter/internal/transport/httptransport/urlrouter/lib/respforusers"
-	validaterequests "github.com/Cwby333/url-shorter/internal/transport/httptransport/urlrouter/lib/validaterequsts"
+	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/mainresponse"
+	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/respforusers"
+	validaterequests "github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/validaterequsts"
+	"github.com/Cwby333/url-shorter/pkg/generalerrors"
 	"github.com/go-playground/validator/v10"
 )
 
@@ -132,12 +132,12 @@ func (router *Router) Save(w http.ResponseWriter, r *http.Request) {
 	id, err := router.urlService.SaveAlias(r.Context(), req.URL, req.Alias)
 
 	if err != nil {
-		if errors.Is(err, storageErrors.ErrAliasAlreadyExists) {
+		if errors.Is(err, generalerrors.ErrAliasAlreadyExists) {
 			logger.Debug("save alias handler", slog.String("error", err.Error()))
 
 			response := ResponseSave{
 				ID:       -1,
-				Response: mainresponse.NewError(errors.New(storageErrors.ErrAliasAlreadyExists.Error()).Error()),
+				Response: mainresponse.NewError(errors.New(generalerrors.ErrAliasAlreadyExists.Error()).Error()),
 			}
 
 			out, err := json.Marshal(response)

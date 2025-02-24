@@ -8,15 +8,15 @@ import (
 	"os/signal"
 	"syscall"
 
-	"golang.org/x/sync/errgroup"
-
 	"github.com/Cwby333/url-shorter/internal/config"
 	"github.com/Cwby333/url-shorter/internal/logger"
 	"github.com/Cwby333/url-shorter/internal/repository/postgres"
 	"github.com/Cwby333/url-shorter/internal/repository/redis"
 	"github.com/Cwby333/url-shorter/internal/services/urlsservice"
 	"github.com/Cwby333/url-shorter/internal/services/usersservice"
-	"github.com/Cwby333/url-shorter/internal/transport/httptransport/httpserver"
+	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/server"
+
+	"golang.org/x/sync/errgroup"
 )
 
 type App struct {
@@ -36,7 +36,6 @@ func (app App) Run() {
 
 	go func() {
 		signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
-
 		<-signalChan
 		cancel()
 	}()
@@ -45,7 +44,6 @@ func (app App) Run() {
 
 	if err != nil {
 		log.Printf("config error: %v", err.Error())
-
 		return
 	}
 
@@ -60,7 +58,6 @@ func (app App) Run() {
 	}
 	defer func() {
 		logger.Info("close db connect")
-
 		pool.Close()
 	}()
 
@@ -77,6 +74,10 @@ func (app App) Run() {
 		logger.Error("", slog.String("error", err.Error()))
 		return
 	}
+	defer func ()  {
+		logger.Info("close cache connect")
+		client.Close()
+	}()
 
 	userService, err := usersservice.New(pool, client, logger, cfg.JWT)
 

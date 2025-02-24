@@ -9,9 +9,9 @@ import (
 
 	"github.com/Cwby333/url-shorter/internal/entity/tokens"
 	"github.com/Cwby333/url-shorter/internal/entity/users"
-	"github.com/Cwby333/url-shorter/internal/transport/httptransport/middlewares/jwtmiddle"
-	"github.com/Cwby333/url-shorter/internal/transport/httptransport/middlewares/logging"
-	"github.com/Cwby333/url-shorter/internal/transport/httptransport/middlewares/requestid"
+	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/middlewares/jwtmiddle"
+	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/middlewares/logging"
+	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/middlewares/requestid"
 	"github.com/Cwby333/url-shorter/pkg/generalerrors"
 )
 

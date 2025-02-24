@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/Cwby333/url-shorter/internal/logger"
-	"github.com/Cwby333/url-shorter/internal/transport/httptransport/urlrouter"
-	"github.com/Cwby333/url-shorter/internal/transport/httptransport/usersrouter"
+	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter"
+	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/usersrouter"
 )
 
 func New(urlService urlrouter.URLService, logger logger.Logger, usersService usersrouter.UsersService) (*http.ServeMux, error) {
