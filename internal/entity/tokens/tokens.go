@@ -10,6 +10,7 @@ type JWTAccessClaims struct {
 
 type JWTRefreshClaims struct {
 	jwt.RegisteredClaims
-	Sign string `json:"sign"`
-	Type string `json:"type"`
+	Sign    string `json:"sign"`
+	Type    string `json:"type"`
+	Version int    `json:"version"`
 }

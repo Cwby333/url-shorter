@@ -43,7 +43,11 @@ func (router Router) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 				logger.Error("json marshal", slog.String("error", err.Error()))
 
 				http.Error(w, "unauthorized, please change credentials", http.StatusUnauthorized)
-				return
+			}
+
+			err = router.service.BlockUser(r.Context(), claims["sub"].(string))
+			if err != nil {
+				logger.Info("block user", slog.String("error", err.Error()))
 			}
 
 			http.Error(w, string(data), http.StatusUnauthorized)
@@ -95,6 +99,76 @@ func (router Router) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	user, err := router.service.GetUserByUUID(r.Context(), claims["sub"].(string))
+
+	if err != nil {
+		if errors.Is(err, generalerrors.ErrUserNotFound) {
+			logger.Info("user not found")
+
+			resp := mainresponse.NewError("user not found")
+			data, err := json.Marshal(resp)
+
+			if err != nil {
+				logger.Error("json marshall", slog.String("error", err.Error()))
+
+				http.Error(w, "user not found", http.StatusNotFound)
+				return
+			}
+
+			http.Error(w, string(data), http.StatusNotFound)
+			return
+		}
+
+		logger.Error("refresh tokens", slog.String("error", err.Error()))
+
+		resp := mainresponse.NewError("internal error")
+		data, err := json.Marshal(resp)
+
+		if err != nil {
+			logger.Error("json marshal", slog.String("error", err.Error()))
+
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		http.Error(w, string(data), http.StatusInternalServerError)
+		return
+	}
+
+	if user.UserBlocked {
+		logger.Info("user blocked")
+
+		resp := mainresponse.NewError("change credentials")
+		data, err := json.Marshal(resp)
+
+		if err != nil {
+			logger.Error("json marshal", slog.String("error", err.Error()))
+
+			http.Error(w, "change credentials", http.StatusUnauthorized)
+			return
+		}
+
+		http.Error(w, string(data), http.StatusUnauthorized)
+		return
+	}
+
+	if claims["version"].(float64) != float64(user.Version) {
+		logger.Info("unauthorized", slog.String("error", errors.New("different version data").Error()))
+
+		resp := mainresponse.NewError("unauthorized")
+		data, err := json.Marshal(resp)
+
+		if err != nil {
+			logger.Error("json marshall", slog.String("error", err.Error()))
+
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		http.Error(w, string(data), http.StatusUnauthorized)
+		return
+	}
+
 	accessClaims, refreshClaims, err := router.service.CreateJWT(r.Context(), sub)
 
 	if err != nil {
@@ -114,7 +188,7 @@ func (router Router) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := LoginResponse{
+	response := RefreshTokensResponse{
 		Response: mainresponse.NewOK(),
 	}
 

@@ -21,6 +21,8 @@ type UsersRepository interface {
 	CreateUser(ctx context.Context, username string, password string) (uuid string, err error)
 	GetUserByUUID(ctx context.Context, uuid string) (users.User, error)
 	GetUserByUsername(ctx context.Context, username string) (users.User, error)
+	ChangeCredentials(ctx context.Context, newUsername string, newPassword string, username string) (user users.User, err error)
+	BlockUser(ctx context.Context, uuid string) error
 }
 
 type RefreshInvalidator interface {
@@ -60,6 +62,11 @@ func New(repo UsersRepository, invalidator RefreshInvalidator, logger logger.Log
 
 func (service UserService) CreateJWT(ctx context.Context, subject string) (accessClaims tokens.JWTAccessClaims, refreshClaims tokens.JWTRefreshClaims, err error) {
 	const op = "internal/services/usersservice/createJWT"
+
+	user, err := service.GetUserByUUID(ctx, subject)
+	if err != nil {
+		return tokens.JWTAccessClaims{}, tokens.JWTRefreshClaims{}, fmt.Errorf("%s: %w", op, err)
+	}
 
 	select {
 	case <-ctx.Done():
@@ -109,7 +116,8 @@ func (service UserService) CreateJWT(ctx context.Context, subject string) (acces
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			ID:        uuid.NewString(),
 		},
-		Type: "refresh",
+		Type:    "refresh",
+		Version: user.Version,
 	})
 	refreshSign, err := refreshToken.SignedString([]byte(os.Getenv("APP_JWT_SECRET_KEY")))
 
@@ -134,7 +142,6 @@ func (service UserService) LogIn(ctx context.Context, username string, password 
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
-
 	if err != nil {
 		return tokens.JWTAccessClaims{}, tokens.JWTRefreshClaims{}, fmt.Errorf("%s: %w", op, generalerrors.ErrWrongPassword)
 	}
@@ -224,6 +231,48 @@ func (service UserService) UseRefresh(ctx context.Context, tokenID string) error
 	const op = "internal/services/userservice/UseRefresh"
 
 	err := service.invalidator.UseRefresh(ctx, tokenID)
+
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
+}
+
+func (service UserService) ChangeCredentials(ctx context.Context, username string, password string, newUsername string, newPassword string) (users.User, error) {
+	const op = "internal/services/userservice/ChangeCredentials"
+
+	user, err := service.repo.GetUserByUsername(ctx, username)
+
+	if err != nil {
+		return users.User{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
+
+	if err != nil {
+		return users.User{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	newPass, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+
+	if err != nil {
+		return users.User{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	user, err = service.repo.ChangeCredentials(ctx, newUsername, string(newPass), username)
+
+	if err != nil {
+		return users.User{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return user, nil
+}
+
+func (service UserService) BlockUser(ctx context.Context, uuid string) error {
+	const op = "internal/services/userservice/BlockUser"
+
+	err := service.repo.BlockUser(ctx, uuid)
 
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)

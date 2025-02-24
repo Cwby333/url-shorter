@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Cwby333/url-shorter/internal/entity/tokens"
+	"github.com/Cwby333/url-shorter/internal/entity/users"
 	"github.com/Cwby333/url-shorter/internal/transport/httptransport/middlewares/jwtmiddle"
 	"github.com/Cwby333/url-shorter/internal/transport/httptransport/middlewares/logging"
 	"github.com/Cwby333/url-shorter/internal/transport/httptransport/middlewares/requestid"
@@ -16,12 +17,24 @@ import (
 
 type UsersService interface {
 	CreateUser(ctx context.Context, username string, password string) (uuid string, err error)
+
+	GetUserByUUID(ctx context.Context, uuid string) (users.User, error)
+
 	LogIn(ctx context.Context, username string, password string) (accessClaims tokens.JWTAccessClaims, refreshClaims tokens.JWTRefreshClaims, err error)
+
 	LogOut(ctx context.Context, tokenId string, ttl time.Duration) error
+
 	CreateJWT(ctx context.Context, subject string) (accessClaims tokens.JWTAccessClaims, refreshClaims tokens.JWTRefreshClaims, err error)
+
 	CheckBlacklist(ctx context.Context, tokenID string) error
+
 	CheckCountOfUses(ctx context.Context, tokenID string, ttl time.Duration) error
+
 	UseRefresh(ctx context.Context, tokenID string) error
+
+	ChangeCredentials(ctx context.Context, username string, password string, newUsername string, newPassword string) (users.User, error)
+
+	BlockUser(ctx context.Context, uuid string) error
 }
 
 type Router struct {
@@ -52,4 +65,6 @@ func (router Router) Run() {
 	router.Router.Handle("POST /logout", requestid.New(router.logger)(logging.New(jwtmiddle.NewRefresh(http.HandlerFunc(router.Logout)))))
 
 	router.Router.Handle("POST /refresh", requestid.New(router.logger)(logging.New(jwtmiddle.NewRefresh(http.HandlerFunc(router.RefreshTokens)))))
+
+	router.Router.Handle("PUT /update", requestid.New(router.logger)(logging.New(http.HandlerFunc(router.Update))))
 }

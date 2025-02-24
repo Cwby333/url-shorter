@@ -12,60 +12,56 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-type LoginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+type UpdateRequest struct {
+	Username    string `json:"username" validate:"required"`
+	Password    string `json:"password" validate:"required"`
+	NewUsername string `json:"new_username" validate:"required"`
+	NewPassword string `json:"new_password" validate:"required"`
 }
 
-type LoginResponse struct {
+type UpdateResponse struct {
 	Response mainresponse.Response
+	UUID     string `json:"uuid"`
 }
 
-func (router Router) Login(w http.ResponseWriter, r *http.Request) {
+func (router Router) Update(w http.ResponseWriter, r *http.Request) {
 	logger := r.Context().Value("logger").(*slog.Logger)
-	logger = logger.With("component", "login handler")
+	logger = logger.With("component", "update user handler")
 
-	var req LoginRequest
-
+	var req UpdateRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 
 	if err != nil {
 		logger.Error("json decoder", slog.String("error", err.Error()))
 
-		resp, err := newLoginResponse(err)
+		resp := mainresponse.NewError("internal error")
+		data, err := json.Marshal(resp)
 
 		if err != nil {
 			logger.Error("json marshal", slog.String("error", err.Error()))
 
 			http.Error(w, "internal error", http.StatusInternalServerError)
-
 			return
 		}
 
-		http.Error(w, string(resp), http.StatusInternalServerError)
-
+		http.Error(w, string(data), http.StatusInternalServerError)
 		return
 	}
 
 	validate := validator.New(validator.WithRequiredStructEnabled())
-
 	err = validate.Struct(req)
 
 	if err != nil {
-		logger.Info("bad request", slog.String("error", err.Error()))
+		errorsValidate := err.(validator.ValidationErrors)
 
-		errForResp := err.(validator.ValidationErrors)
-		resp := validaterequests.Validate(errForResp)
-		response := LoginResponse{
-			Response: mainresponse.NewError(resp...),
-		}
+		resp := validaterequests.Validate(errorsValidate)
+		response := mainresponse.NewError(resp...)
 		data, err := json.Marshal(response)
 
 		if err != nil {
 			logger.Error("json marshal", slog.String("error", err.Error()))
 
 			http.Error(w, "bad request", http.StatusBadRequest)
-
 			return
 		}
 
@@ -73,7 +69,7 @@ func (router Router) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accessClaims, refreshClaims, err := router.service.LogIn(r.Context(), req.Username, req.Password)
+	user, err := router.service.ChangeCredentials(r.Context(), req.Username, req.Password, req.NewUsername, req.NewPassword)
 
 	if err != nil {
 		if errors.Is(err, generalerrors.ErrUserNotFound) {
@@ -109,7 +105,8 @@ func (router Router) Login(w http.ResponseWriter, r *http.Request) {
 
 		logger.Error("login handler", slog.String("error", err.Error()))
 
-		resp, err := newLoginResponse(errors.New("internal error"))
+		resp := mainresponse.NewError("internal error")
+		data, err := json.Marshal(resp)
 
 		if err != nil {
 			logger.Error("json marshal", slog.String("error", err.Error()))
@@ -118,68 +115,24 @@ func (router Router) Login(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		http.Error(w, string(resp), http.StatusUnauthorized)
+		http.Error(w, string(data), http.StatusUnauthorized)
 		return
 	}
 
-	response := LoginResponse{
+	resp := UpdateResponse{
 		Response: mainresponse.NewOK(),
+		UUID:     user.UUID,
 	}
-
-	data, err := json.Marshal(response)
+	data, err := json.Marshal(resp)
 
 	if err != nil {
 		logger.Error("json marshal", slog.String("error", err.Error()))
-		logger.Info("success login handler")
 
-		w.Write([]byte("Success login"))
-
-		http.SetCookie(w, &http.Cookie{
-			Name:     "jwt-access",
-			Value:    accessClaims.Sign,
-			HttpOnly: true,
-			Secure:   true,
-			Expires:  accessClaims.ExpiresAt.Time,
-		})
-		http.SetCookie(w, &http.Cookie{
-			Name:     "refresh-token",
-			Value:    refreshClaims.Sign,
-			HttpOnly: true,
-			Secure:   true,
-			Expires:  refreshClaims.ExpiresAt.Time,
-		})
+		w.Write([]byte("success update, uuid:" + " " + user.UUID))
 		return
 	}
 
-	logger.Info("success login handler")
-
-	http.SetCookie(w, &http.Cookie{
-		Name:     "jwt-access",
-		Value:    accessClaims.Sign,
-		HttpOnly: true,
-		Expires:  accessClaims.ExpiresAt.Time,
-	})
-	http.SetCookie(w, &http.Cookie{
-		Name:     "refresh-token",
-		Value:    refreshClaims.Sign,
-		HttpOnly: true,
-		Expires:  refreshClaims.ExpiresAt.Time,
-		Path:     "/api/users/refresh",
-	})
+	logger.Info("success update handler")
 
 	w.Write(data)
-}
-
-func newLoginResponse(err error) ([]byte, error) {
-	resp := LoginResponse{
-		Response: mainresponse.NewError(err.Error()),
-	}
-
-	out, err := json.Marshal(resp)
-
-	if err != nil {
-		return []byte{}, err
-	}
-
-	return out, nil
 }
