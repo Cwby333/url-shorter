@@ -13,10 +13,10 @@ import (
 	"github.com/Cwby333/url-shorter/internal/config"
 	"github.com/Cwby333/url-shorter/internal/logger"
 	"github.com/Cwby333/url-shorter/internal/repository/postgres"
+	"github.com/Cwby333/url-shorter/internal/repository/redis"
 	"github.com/Cwby333/url-shorter/internal/services/urlsservice"
 	"github.com/Cwby333/url-shorter/internal/services/usersservice"
 	"github.com/Cwby333/url-shorter/internal/transport/httptransport/httpserver"
-	"github.com/Cwby333/url-shorter/internal/repository/redis"
 )
 
 type App struct {

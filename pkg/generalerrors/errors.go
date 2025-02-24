@@ -10,4 +10,6 @@ var (
 	ErrUserNotFound = errors.New("user not found")
 
 	ErrRefreshInBlackList = errors.New("token found in blacklist")
+
+	ErrToManyUseOfRefreshToken = errors.New("to many uses of refresh token")
 )

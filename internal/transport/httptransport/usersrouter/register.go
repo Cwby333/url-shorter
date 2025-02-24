@@ -24,7 +24,7 @@ type RegisterResponse struct {
 	Username string `json:"username"`
 }
 
-func (router Router) RegisterHandler(w http.ResponseWriter, r *http.Request) {
+func (router Router) Register(w http.ResponseWriter, r *http.Request) {
 	logger := r.Context().Value("logger").(*slog.Logger)
 	logger = logger.With("component", "register handler")
 

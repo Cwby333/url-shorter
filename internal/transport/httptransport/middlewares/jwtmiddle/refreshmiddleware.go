@@ -24,7 +24,7 @@ func NewRefresh(next http.Handler) http.Handler {
 			logger.Info("missed auth header, must invalid refresh token")
 
 			resp := mainresponse.NewError("send refresh token")
-			
+
 			data, err := json.Marshal(resp)
 
 			if err != nil {
@@ -34,7 +34,7 @@ func NewRefresh(next http.Handler) http.Handler {
 				return
 			}
 
-			http.Error(w, string(data), http.StatusBadRequest)	
+			http.Error(w, string(data), http.StatusBadRequest)
 			return
 		}
 
@@ -48,7 +48,7 @@ func NewRefresh(next http.Handler) http.Handler {
 			resp := mainresponse.NewError("unauthorized")
 
 			data, err := json.Marshal(resp)
-		
+
 			if err != nil {
 				logger.Error("json marshal", slog.String("error", err.Error()))
 
@@ -61,12 +61,12 @@ func NewRefresh(next http.Handler) http.Handler {
 		}
 
 		if !t.Valid {
-			logger.Info("invalid token", slog.String("error", err.Error()))
+			logger.Info("invalid token")
 
 			resp := mainresponse.NewError("unauthorized")
 
 			data, err := json.Marshal(resp)
-		
+
 			if err != nil {
 				logger.Error("json marshal", slog.String("error", err.Error()))
 
@@ -118,6 +118,7 @@ func NewRefresh(next http.Handler) http.Handler {
 
 		ctx := r.Context()
 		ctx = context.WithValue(ctx, "logger", logger)
+		ctx = context.WithValue(ctx, "claims", claims)
 		r = r.WithContext(ctx)
 
 		next.ServeHTTP(w, r)

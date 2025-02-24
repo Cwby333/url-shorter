@@ -12,27 +12,27 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-type LogInRequest struct {
+type LoginRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
-type LogInResponse struct {
+type LoginResponse struct {
 	Response mainresponse.Response
 }
 
-func (router Router) LogInHandler(w http.ResponseWriter, r *http.Request) {
+func (router Router) Login(w http.ResponseWriter, r *http.Request) {
 	logger := r.Context().Value("logger").(*slog.Logger)
 	logger = logger.With("component", "login handler")
 
-	var req LogInRequest
+	var req LoginRequest
 
 	err := json.NewDecoder(r.Body).Decode(&req)
 
 	if err != nil {
 		logger.Error("json decoder", slog.String("error", err.Error()))
 
-		resp, err := newLogInResponse(err)
+		resp, err := newLoginResponse(err)
 
 		if err != nil {
 			logger.Error("json marshal", slog.String("error", err.Error()))
@@ -56,7 +56,7 @@ func (router Router) LogInHandler(w http.ResponseWriter, r *http.Request) {
 
 		errForResp := err.(validator.ValidationErrors)
 		resp := validaterequests.Validate(errForResp)
-		response := LogInResponse{
+		response := LoginResponse{
 			Response: mainresponse.NewError(resp...),
 		}
 		data, err := json.Marshal(response)
@@ -76,11 +76,10 @@ func (router Router) LogInHandler(w http.ResponseWriter, r *http.Request) {
 	accessClaims, refreshClaims, err := router.service.LogIn(r.Context(), req.Username, req.Password)
 
 	if err != nil {
-
 		if errors.Is(err, generalerrors.ErrUserNotFound) {
 			logger.Info("wrong username")
 
-			resp, err := newLogInResponse(errors.New("wrong username"))
+			resp, err := newLoginResponse(errors.New("wrong username"))
 
 			if err != nil {
 				logger.Error("json marshal", slog.String("error", err.Error()))
@@ -95,7 +94,7 @@ func (router Router) LogInHandler(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, generalerrors.ErrWrongPassword) {
 			logger.Info("wrong password")
 
-			resp, err := newLogInResponse(errors.New("wrong password"))
+			resp, err := newLoginResponse(errors.New("wrong password"))
 
 			if err != nil {
 				logger.Error("json marshal", slog.String("error", err.Error()))
@@ -110,7 +109,7 @@ func (router Router) LogInHandler(w http.ResponseWriter, r *http.Request) {
 
 		logger.Error("login handler", slog.String("error", err.Error()))
 
-		resp, err := newLogInResponse(errors.New("internal error"))
+		resp, err := newLoginResponse(errors.New("internal error"))
 
 		if err != nil {
 			logger.Error("json marshal", slog.String("error", err.Error()))
@@ -123,7 +122,7 @@ func (router Router) LogInHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := LogInResponse{
+	response := LoginResponse{
 		Response: mainresponse.NewOK(),
 	}
 
@@ -158,22 +157,21 @@ func (router Router) LogInHandler(w http.ResponseWriter, r *http.Request) {
 		Name:     "jwt-access",
 		Value:    accessClaims.Sign,
 		HttpOnly: true,
-		Secure:   true,
 		Expires:  accessClaims.ExpiresAt.Time,
 	})
 	http.SetCookie(w, &http.Cookie{
 		Name:     "refresh-token",
 		Value:    refreshClaims.Sign,
 		HttpOnly: true,
-		Secure:   true,
 		Expires:  refreshClaims.ExpiresAt.Time,
+		Path:     "/api/users/refresh",
 	})
 
 	w.Write(data)
 }
 
-func newLogInResponse(err error) ([]byte, error) {
-	resp := LogInResponse{
+func newLoginResponse(err error) ([]byte, error) {
+	resp := LoginResponse{
 		Response: mainresponse.NewError(err.Error()),
 	}
 

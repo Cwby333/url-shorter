@@ -11,9 +11,9 @@ import (
 	"github.com/Cwby333/url-shorter/internal/entity/users"
 	"github.com/Cwby333/url-shorter/internal/logger"
 	"github.com/Cwby333/url-shorter/pkg/generalerrors"
-	"github.com/google/uuid"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -24,14 +24,16 @@ type UsersRepository interface {
 }
 
 type RefreshInvalidator interface {
-	InvalidRefresh(ctx context.Context, tokenID string, ttl time.Duration)
-	CheckRefresh(ctx context.Context, tokenID string) (error)
+	InvalidRefresh(ctx context.Context, tokenID string, ttl time.Duration) error
+	CheckBlacklist(ctx context.Context, tokenID string) error
+	CheckCountOfUses(ctx context.Context, tokenID string, ttl time.Duration) error
+	UseRefresh(ctx context.Context, tokenID string) error
 }
 
 type UserService struct {
-	repo   UsersRepository
+	repo        UsersRepository
 	invalidator RefreshInvalidator
-	jwtCfg config.JWT
+	jwtCfg      config.JWT
 }
 
 func New(repo UsersRepository, invalidator RefreshInvalidator, logger logger.Logger, jwtCfg config.JWT) (UserService, error) {
@@ -50,13 +52,13 @@ func New(repo UsersRepository, invalidator RefreshInvalidator, logger logger.Log
 	}
 
 	return UserService{
-		repo:   repo,
+		repo:        repo,
 		invalidator: invalidator,
-		jwtCfg: jwtCfg,
+		jwtCfg:      jwtCfg,
 	}, nil
 }
 
-func (service UserService) createJWT(ctx context.Context, subject string) (accessClaims tokens.JWTAccessClaims, refreshClaims tokens.JWTRefreshClaims, err error) {
+func (service UserService) CreateJWT(ctx context.Context, subject string) (accessClaims tokens.JWTAccessClaims, refreshClaims tokens.JWTRefreshClaims, err error) {
 	const op = "internal/services/usersservice/createJWT"
 
 	select {
@@ -105,7 +107,7 @@ func (service UserService) createJWT(ctx context.Context, subject string) (acces
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(refreshDur)),
 			NotBefore: jwt.NewNumericDate(time.Now()),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			ID: uuid.NewString(),
+			ID:        uuid.NewString(),
 		},
 		Type: "refresh",
 	})
@@ -137,7 +139,7 @@ func (service UserService) LogIn(ctx context.Context, username string, password 
 		return tokens.JWTAccessClaims{}, tokens.JWTRefreshClaims{}, fmt.Errorf("%s: %w", op, generalerrors.ErrWrongPassword)
 	}
 
-	accessClaims, refreshClaims, err = service.createJWT(ctx, user.UUID)
+	accessClaims, refreshClaims, err = service.CreateJWT(ctx, user.UUID)
 
 	if err != nil {
 		return tokens.JWTAccessClaims{}, tokens.JWTRefreshClaims{}, fmt.Errorf("%s: %w", op, err)
@@ -176,14 +178,56 @@ func (service UserService) GetUserByUUID(ctx context.Context, uuid string) (user
 	return user, nil
 }
 
-func (service UserService) LogOut(ctx context.Context, tokenId string, ttl time.Duration) {
+func (service UserService) LogOut(ctx context.Context, tokenID string, ttl time.Duration) error {
 	const op = "internal/services/userservice/LogOut"
 
 	select {
 	case <-ctx.Done():
-		return
+		return fmt.Errorf("%s: %w", op, ctx.Err())
 	default:
 	}
 
-	service.invalidator.InvalidRefresh(ctx, tokenId, ttl)
+	err := service.invalidator.InvalidRefresh(ctx, tokenID, ttl)
+
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
+}
+
+func (service UserService) CheckBlacklist(ctx context.Context, tokenID string) error {
+	const op = "internal/services/userservice/CheckRefresh"
+
+	err := service.invalidator.CheckBlacklist(ctx, tokenID)
+
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
+}
+
+func (service UserService) CheckCountOfUses(ctx context.Context, tokenID string, ttl time.Duration) error {
+	const op = "internal/services/userservice/CheckCountOfUses"
+
+	err := service.invalidator.CheckCountOfUses(ctx, tokenID, ttl)
+
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
+}
+
+func (service UserService) UseRefresh(ctx context.Context, tokenID string) error {
+	const op = "internal/services/userservice/UseRefresh"
+
+	err := service.invalidator.UseRefresh(ctx, tokenID)
+
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
 }
