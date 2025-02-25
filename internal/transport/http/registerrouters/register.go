@@ -5,16 +5,17 @@ import (
 	"net/http"
 
 	"github.com/Cwby333/url-shorter/internal/logger"
-	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter"
-	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/usersrouter"
+	"github.com/Cwby333/url-shorter/internal/transport/http/ratelimiter"
+	"github.com/Cwby333/url-shorter/internal/transport/http/urlrouter"
+	"github.com/Cwby333/url-shorter/internal/transport/http/usersrouter"
 )
 
-func New(urlService urlrouter.URLService, logger logger.Logger, usersService usersrouter.UsersService) (*http.ServeMux, error) {
+func New(urlService urlrouter.URLService, logger logger.Logger, usersService usersrouter.UsersService, limiter ratelimiter.Limiter) (*http.ServeMux, error) {
 	const op = "internal/transports/httptransport/registerrouters/register.go/Register"
 
 	mux := http.NewServeMux()
 
-	routerURLS, err := urlrouter.New(urlService, logger)
+	routerURLS, err := urlrouter.New(urlService, logger, limiter)
 
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -22,7 +23,7 @@ func New(urlService urlrouter.URLService, logger logger.Logger, usersService use
 
 	routerURLS.Run()
 
-	routerUsers, err := usersrouter.New(usersService, logger.Logger)
+	routerUsers, err := usersrouter.New(usersService, logger.Logger, limiter)
 
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)

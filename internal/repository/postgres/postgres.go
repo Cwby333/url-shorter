@@ -21,7 +21,7 @@ const (
 )
 
 const (
-	ErrNoRowsInCollectRow = "no rows in result set"
+	NoRowsInCollectedSet = "no rows in result set"
 )
 
 const (
@@ -46,7 +46,11 @@ type Postgres struct {
 func Connect(ctx context.Context, cfg config.Database) (Postgres, error) {
 	const op = "repo/postgres/Connect"
 
-	dsn := dsn.NewDsn("postgresPool", cfg)
+	dsn, err := dsn.NewDSN("postgresPool", cfg)
+
+	if err != nil {
+		return Postgres{}, fmt.Errorf("%s: %w", op, err)
+	}
 
 	c, _ := pgxpool.ParseConfig(dsn)
 
@@ -151,7 +155,7 @@ func (conn Postgres) GetURL(ctx context.Context, alias string) (url string, err 
 	urlItem, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[urls.URL])
 
 	if err != nil {
-		if err.Error() == ErrNoRowsInCollectRow {
+		if err.Error() == NoRowsInCollectedSet {
 			return "", fmt.Errorf("%s: %w", op, generalerrors.ErrAliasNotFound)
 		}
 
@@ -313,7 +317,7 @@ func (conn Postgres) GetUserByUUID(ctx context.Context, uuid string) (user users
 	user, err = pgx.CollectOneRow(rows, pgx.RowToStructByName[users.User])
 
 	if err != nil {
-		if err.Error() == ErrNoRowsInCollectRow {
+		if err.Error() == NoRowsInCollectedSet {
 			return users.User{}, fmt.Errorf("%s: %w", op, generalerrors.ErrUserNotFound)
 		}
 
@@ -358,7 +362,7 @@ func (conn Postgres) GetUserByUsername(ctx context.Context, username string) (us
 	user, err = pgx.CollectOneRow(rows, pgx.RowToStructByName[users.User])
 
 	if err != nil {
-		if err.Error() == ErrNoRowsInCollectRow {
+		if err.Error() == NoRowsInCollectedSet {
 			return users.User{}, fmt.Errorf("%s: %w", op, generalerrors.ErrUserNotFound)
 		}
 	}

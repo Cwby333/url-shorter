@@ -7,9 +7,9 @@ import (
 	"log/slog"
 	"net/http"
 
-	validaterequests "github.com/Cwby333/url-shorter/internal/transport/httpsrv/lib/validaterequsts"
-	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/mainresponse"
-	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/respforusers"
+	"github.com/Cwby333/url-shorter/internal/transport/http/lib/mainresponse"
+	"github.com/Cwby333/url-shorter/internal/transport/http/lib/respforusers"
+	validaterequests "github.com/Cwby333/url-shorter/internal/transport/http/lib/validaterequsts"
 	"github.com/Cwby333/url-shorter/pkg/generalerrors"
 	"github.com/go-playground/validator/v10"
 )
@@ -25,7 +25,7 @@ type ResponseUpdateURL struct {
 }
 
 func newUpdateURLResponse(err error) ([]byte, error) {
-	const op = "internal/transport/httpsrv/urlsrouter/newUpdateURLResponse"
+	const op = "internal/transport/http/urlsrouter/newUpdateURLResponse"
 
 	response := ResponseUpdateURL{
 		Response: mainresponse.NewError(err.Error()),
@@ -62,8 +62,7 @@ func (router *Router) UpdateURL(w http.ResponseWriter, r *http.Request) {
 
 	logger = logger.With("component", "update url handler")
 
-	var req RequestUpdateURL
-
+	req := RequestUpdateURL{}
 	err := json.NewDecoder(r.Body).Decode(&req)
 
 	if err != nil {
@@ -149,7 +148,6 @@ func (router *Router) UpdateURL(w http.ResponseWriter, r *http.Request) {
 		Response: mainresponse.NewOK(),
 		URL:      req.NewURL,
 	}
-
 	data, err := json.Marshal(response)
 
 	if err != nil {

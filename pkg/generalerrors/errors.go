@@ -16,4 +16,7 @@ var (
 	ErrAliasNotFound      = errors.New("alias not found")
 
 	ErrCacheMiss = errors.New("not found in cache")
+
+	ErrRateLimiterForbidden = errors.New("forbidden by rate limiter")
+	ErrNegativeLimit        = errors.New("negative limit")
 )

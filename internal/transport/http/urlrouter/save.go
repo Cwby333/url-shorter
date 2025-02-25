@@ -8,9 +8,9 @@ import (
 	"math/rand/v2"
 	"net/http"
 
-	validaterequests "github.com/Cwby333/url-shorter/internal/transport/httpsrv/lib/validaterequsts"
-	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/mainresponse"
-	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/respforusers"
+	"github.com/Cwby333/url-shorter/internal/transport/http/lib/mainresponse"
+	"github.com/Cwby333/url-shorter/internal/transport/http/lib/respforusers"
+	validaterequests "github.com/Cwby333/url-shorter/internal/transport/http/lib/validaterequsts"
 	"github.com/Cwby333/url-shorter/pkg/generalerrors"
 	"github.com/go-playground/validator/v10"
 )
@@ -35,7 +35,7 @@ type ResponseSave struct {
 }
 
 func newSaveResponse(err error) ([]byte, error) {
-	const op = "internal/transport/httpsrv/urlrouter/save.go/newResponseSave"
+	const op = "internal/transport/http/urlrouter/save.go/newResponseSave"
 
 	response := ResponseSave{
 		ID:       -1,
@@ -73,8 +73,7 @@ func (router *Router) Save(w http.ResponseWriter, r *http.Request) {
 
 	logger = logger.With("component", "save handler")
 
-	var req RequestSave
-
+	req := RequestSave{}
 	err := json.NewDecoder(r.Body).Decode(&req)
 
 	if err != nil {
@@ -198,7 +197,6 @@ func (router *Router) Save(w http.ResponseWriter, r *http.Request) {
 		Response: mainresponse.NewOK(),
 		Alias:    req.Alias,
 	}
-
 	responseJSON, err := json.Marshal(resp)
 
 	if err != nil {

@@ -7,9 +7,9 @@ import (
 	"log/slog"
 	"net/http"
 
-	validaterequests "github.com/Cwby333/url-shorter/internal/transport/httpsrv/lib/validaterequsts"
-	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/mainresponse"
-	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/respforusers"
+	"github.com/Cwby333/url-shorter/internal/transport/http/lib/mainresponse"
+	"github.com/Cwby333/url-shorter/internal/transport/http/lib/respforusers"
+	validaterequests "github.com/Cwby333/url-shorter/internal/transport/http/lib/validaterequsts"
 	"github.com/Cwby333/url-shorter/pkg/generalerrors"
 
 	"github.com/go-playground/validator/v10"
@@ -25,7 +25,7 @@ type ResponseGet struct {
 }
 
 func newResponseGet(err error) ([]byte, error) {
-	const op = "internal/transport/httpsrv/urlrouter/get.go/newResponseGet"
+	const op = "internal/transport/http/urlrouter/get.go/newResponseGet"
 
 	response := ResponseGet{
 		URL:      "",
@@ -63,7 +63,7 @@ func (router *Router) Get(w http.ResponseWriter, r *http.Request) {
 
 	logger = logger.With("component", "get handler")
 
-	var req RequestGet
+	req := RequestGet{}
 	err := json.NewDecoder(r.Body).Decode(&req)
 
 	if err != nil {
@@ -184,7 +184,6 @@ func (router *Router) Get(w http.ResponseWriter, r *http.Request) {
 		URL:      url,
 		Response: mainresponse.NewOK(),
 	}
-
 	responseJSON, err := json.Marshal(resp)
 
 	if err != nil {

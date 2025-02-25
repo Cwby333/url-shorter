@@ -6,9 +6,9 @@ import (
 	"log/slog"
 	"net/http"
 
-	validaterequests "github.com/Cwby333/url-shorter/internal/transport/httpsrv/lib/validaterequsts"
-	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/mainresponse"
-	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/respforusers"
+	"github.com/Cwby333/url-shorter/internal/transport/http/lib/mainresponse"
+	"github.com/Cwby333/url-shorter/internal/transport/http/lib/respforusers"
+	validaterequests "github.com/Cwby333/url-shorter/internal/transport/http/lib/validaterequsts"
 	"github.com/Cwby333/url-shorter/pkg/generalerrors"
 
 	"github.com/go-playground/validator/v10"
@@ -47,8 +47,7 @@ func (router Router) Register(w http.ResponseWriter, r *http.Request) {
 
 	logger = logger.With("component", "register handler")
 
-	var request RegisterRequest
-
+	request := RegisterRequest{}
 	err := json.NewDecoder(r.Body).Decode(&request)
 
 	if err != nil {
@@ -146,8 +145,7 @@ func (router Router) Register(w http.ResponseWriter, r *http.Request) {
 		UUID:     uuid,
 		Username: request.Username,
 	}
-
-	out, err := json.Marshal(response)
+	data, err := json.Marshal(response)
 
 	if err != nil {
 		logger.Error("json marshal", slog.String("error", err.Error()))
@@ -158,7 +156,7 @@ func (router Router) Register(w http.ResponseWriter, r *http.Request) {
 
 	logger.Info("success create handler")
 
-	_, err = w.Write(out)
+	_, err = w.Write(data)
 
 	if err != nil {
 		logger.Error("response write", slog.String("error", err.Error()))

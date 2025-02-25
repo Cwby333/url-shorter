@@ -8,11 +8,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/mainresponse"
+	"github.com/Cwby333/url-shorter/internal/transport/http/lib/mainresponse"
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func NewAccess(next http.Handler) http.Handler {
+func NewRefresh(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		logger, ok := r.Context().Value("logger").(*slog.Logger)
 
@@ -33,34 +33,31 @@ func NewAccess(next http.Handler) http.Handler {
 			return
 		}
 
-		logger = logger.With("component", "json middleware")
+		logger = logger.With("component", "logout")
 
-		tokenString := r.Header.Get("Authorization")
+		refreshToken := r.Header.Get("Authorization")
+		refreshToken = strings.TrimPrefix(refreshToken, "Bearer ")
 
-		tokenString = strings.TrimPrefix(tokenString, "Bearer ")
+		if refreshToken == "" {
+			logger.Info("missed auth header, must invalid refresh token")
 
-		if tokenString == "" {
-			logger.Info("unauthorized")
-
-			resp := mainresponse.NewError("unauthorized")
+			resp := mainresponse.NewError("send refresh token")
 
 			data, err := json.Marshal(resp)
 
 			if err != nil {
-				logger.Error("json marshall", slog.String("error", err.Error()))
+				logger.Error("json marshal", slog.String("error", err.Error()))
 
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				http.Error(w, "send refresh token", http.StatusBadRequest)
 				return
 			}
 
-			http.Error(w, string(data), http.StatusUnauthorized)
+			http.Error(w, string(data), http.StatusBadRequest)
 			return
 		}
 
-		secretKey := os.Getenv("APP_JWT_SECRET_KEY")
-
-		t, err := jwt.ParseWithClaims(tokenString, jwt.MapClaims{}, func(t *jwt.Token) (interface{}, error) {
-			return []byte(secretKey), nil
+		t, err := jwt.ParseWithClaims(refreshToken, jwt.MapClaims{}, func(t *jwt.Token) (interface{}, error) {
+			return []byte(os.Getenv("APP_JWT_SECRET_KEY")), nil
 		},
 			jwt.WithIssuer(os.Getenv("APP_JWT_ISSUER")),
 			jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}),
@@ -75,7 +72,7 @@ func NewAccess(next http.Handler) http.Handler {
 			data, err := json.Marshal(resp)
 
 			if err != nil {
-				logger.Error("json marshall", slog.String("error", err.Error()))
+				logger.Error("json marshal", slog.String("error", err.Error()))
 
 				http.Error(w, "unauthorized", http.StatusUnauthorized)
 				return
@@ -86,14 +83,14 @@ func NewAccess(next http.Handler) http.Handler {
 		}
 
 		if !t.Valid {
-			logger.Info("invalid jwt")
+			logger.Info("invalid token")
 
 			resp := mainresponse.NewError("unauthorized")
 
 			data, err := json.Marshal(resp)
 
 			if err != nil {
-				logger.Error("json marshall", slog.String("error", err.Error()))
+				logger.Error("json marshal", slog.String("error", err.Error()))
 
 				http.Error(w, "unauthorized", http.StatusUnauthorized)
 				return
@@ -113,13 +110,13 @@ func NewAccess(next http.Handler) http.Handler {
 			data, err := json.Marshal(resp)
 
 			if err != nil {
-				logger.Error("json marshall", slog.String("error", err.Error()))
+				logger.Error("json marshal", slog.String("error", err.Error()))
 
-				http.Error(w, "internal error", http.StatusUnauthorized)
+				http.Error(w, "internal error", http.StatusInternalServerError)
 				return
 			}
 
-			http.Error(w, string(data), http.StatusUnauthorized)
+			http.Error(w, string(data), http.StatusInternalServerError)
 			return
 		}
 
@@ -142,7 +139,7 @@ func NewAccess(next http.Handler) http.Handler {
 			return
 		}
 
-		if typeToken != "access" {
+		if typeToken != "refresh" {
 			logger.Info("wrong token type")
 
 			resp := mainresponse.NewError("unauthorized")
@@ -162,6 +159,7 @@ func NewAccess(next http.Handler) http.Handler {
 
 		ctx := r.Context()
 		ctx = context.WithValue(ctx, "logger", logger)
+		ctx = context.WithValue(ctx, "claims", claims)
 		r = r.WithContext(ctx)
 
 		next.ServeHTTP(w, r)

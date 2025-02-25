@@ -15,15 +15,12 @@ var (
 )
 
 type Config struct {
-	Env string `yaml:"env" env-required:"true"`
-
-	HTTPServer `yaml:"http-server" env-required:"true"`
-
-	Database `yaml:"database" env-required:"true"`
-
-	JWT `yaml:"jwt" env-required:"true"`
-
-	Redis `yaml:"redis" env-required:"true"`
+	Env         string `yaml:"env" env-required:"true"`
+	HTTPServer  `yaml:"http-server" env-required:"true"`
+	Database    `yaml:"database" env-required:"true"`
+	JWT         `yaml:"jwt" env-required:"true"`
+	Redis       `yaml:"redis" env-required:"true"`
+	RateLimiter `yaml:"rate-limiter" env-required:"true"`
 }
 
 type HTTPServer struct {
@@ -67,6 +64,11 @@ type JWTAccess struct {
 
 type JWTRefresh struct {
 	ExpiredTime string `yaml:"jwt-refresh-expired" env-required:"true"`
+}
+
+type RateLimiter struct {
+	Limit int           `yaml:"limit" env-required:"true"`
+	TTL   time.Duration `yaml:"ttl" env-required:"true"`
 }
 
 func Load(env string) (Config, error) {

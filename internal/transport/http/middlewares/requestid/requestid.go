@@ -22,9 +22,7 @@ func New(logger *slog.Logger) func(next http.Handler) http.Handler {
 			}
 
 			ctx := r.Context()
-
 			ctx = context.WithValue(ctx, "logger", logger)
-
 			r = r.WithContext(ctx)
 
 			next.ServeHTTP(w, r)

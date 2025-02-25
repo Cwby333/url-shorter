@@ -8,9 +8,10 @@ import (
 
 	"github.com/Cwby333/url-shorter/internal/config"
 	"github.com/Cwby333/url-shorter/internal/logger"
-	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/registerrouters"
-	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter"
-	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/usersrouter"
+	"github.com/Cwby333/url-shorter/internal/transport/http/ratelimiter"
+	"github.com/Cwby333/url-shorter/internal/transport/http/registerrouters"
+	"github.com/Cwby333/url-shorter/internal/transport/http/urlrouter"
+	"github.com/Cwby333/url-shorter/internal/transport/http/usersrouter"
 )
 
 type Server struct {
@@ -18,10 +19,10 @@ type Server struct {
 	ErrCh  chan error
 }
 
-func New(ctx context.Context, cfg config.HTTPServer, urlService urlrouter.URLService, logger logger.Logger, userService usersrouter.UsersService) (Server, error) {
+func New(ctx context.Context, cfg config.HTTPServer, urlService urlrouter.URLService, logger logger.Logger, userService usersrouter.UsersService, limiter ratelimiter.Limiter) (Server, error) {
 	const op = "transport/http/httpserver/New"
 
-	mux, err := registerrouters.New(urlService, logger, userService)
+	mux, err := registerrouters.New(urlService, logger, userService, limiter)
 
 	if err != nil {
 		return Server{}, fmt.Errorf("%s:%w", op, err)

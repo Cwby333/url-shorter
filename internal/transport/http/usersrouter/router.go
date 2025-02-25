@@ -9,9 +9,11 @@ import (
 
 	"github.com/Cwby333/url-shorter/internal/entity/tokens"
 	"github.com/Cwby333/url-shorter/internal/entity/users"
-	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/middlewares/jwtmiddle"
-	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/middlewares/logging"
-	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/middlewares/requestid"
+	"github.com/Cwby333/url-shorter/internal/transport/http/middlewares/jwtmiddle"
+	"github.com/Cwby333/url-shorter/internal/transport/http/middlewares/limitermidde"
+	"github.com/Cwby333/url-shorter/internal/transport/http/middlewares/logging"
+	"github.com/Cwby333/url-shorter/internal/transport/http/middlewares/requestid"
+	"github.com/Cwby333/url-shorter/internal/transport/http/ratelimiter"
 	"github.com/Cwby333/url-shorter/pkg/generalerrors"
 )
 
@@ -28,7 +30,7 @@ type UsersService interface {
 
 	CheckBlacklist(ctx context.Context, tokenID string) error
 
-	CheckCountOfUses(ctx context.Context, tokenID string, ttl time.Duration) error
+	CheckCountOfUsesRefreshToken(ctx context.Context, tokenID string, ttl time.Duration) error
 
 	UseRefresh(ctx context.Context, tokenID string) error
 
@@ -40,10 +42,11 @@ type UsersService interface {
 type Router struct {
 	Router  *http.ServeMux
 	service UsersService
+	limiter ratelimiter.Limiter
 	logger  *slog.Logger
 }
 
-func New(service UsersService, logger *slog.Logger) (Router, error) {
+func New(service UsersService, logger *slog.Logger, limiter ratelimiter.Limiter) (Router, error) {
 	const op = "internal/transport/httptransport/usersrouter/New"
 
 	if service == (UsersService)(nil) {
@@ -53,18 +56,19 @@ func New(service UsersService, logger *slog.Logger) (Router, error) {
 	return Router{
 		Router:  http.NewServeMux(),
 		service: service,
+		limiter: limiter,
 		logger:  logger,
 	}, nil
 }
 
 func (router Router) Run() {
-	router.Router.Handle("POST /create", requestid.New(router.logger)(logging.New(http.HandlerFunc(router.Register))))
+	router.Router.Handle("POST /create", requestid.New(router.logger)(logging.New(limitermidde.New(router.limiter)(http.HandlerFunc(router.Register)))))
 
-	router.Router.Handle("POST /login", requestid.New(router.logger)(logging.New(http.HandlerFunc(router.Login))))
+	router.Router.Handle("POST /login", requestid.New(router.logger)(logging.New(limitermidde.New(router.limiter)(http.HandlerFunc(router.Login)))))
 
-	router.Router.Handle("POST /logout", requestid.New(router.logger)(logging.New(jwtmiddle.NewRefresh(http.HandlerFunc(router.Logout)))))
+	router.Router.Handle("POST /logout", requestid.New(router.logger)(logging.New(jwtmiddle.NewRefresh(limitermidde.New(router.limiter)(http.HandlerFunc(router.Logout))))))
 
-	router.Router.Handle("POST /refresh", requestid.New(router.logger)(logging.New(jwtmiddle.NewRefresh(http.HandlerFunc(router.RefreshTokens)))))
+	router.Router.Handle("POST /refresh", requestid.New(router.logger)(logging.New(jwtmiddle.NewRefresh(limitermidde.New(router.limiter)(http.HandlerFunc(router.RefreshTokens))))))
 
-	router.Router.Handle("PUT /update", requestid.New(router.logger)(logging.New(http.HandlerFunc(router.Update))))
+	router.Router.Handle("PUT /update", requestid.New(router.logger)(logging.New(limitermidde.New(router.limiter)(http.HandlerFunc(router.Update)))))
 }

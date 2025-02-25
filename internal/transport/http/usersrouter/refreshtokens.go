@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/mainresponse"
+	"github.com/Cwby333/url-shorter/internal/transport/http/lib/mainresponse"
 	"github.com/Cwby333/url-shorter/pkg/generalerrors"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -49,7 +49,7 @@ func (router Router) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 	dur := time.Duration(int64(claims["exp"].(float64) * forMultiplicationToUnitTime)).Seconds()
 	dur = (dur - float64(time.Now().Unix())) * forMultiplicationToUnitTime
 
-	err := router.service.CheckCountOfUses(r.Context(), tokenID, time.Duration(dur))
+	err := router.service.CheckCountOfUsesRefreshToken(r.Context(), tokenID, time.Duration(dur))
 
 	if err != nil {
 		if errors.Is(err, generalerrors.ErrToManyUseOfRefreshToken) {
@@ -213,7 +213,6 @@ func (router Router) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 	response := RefreshTokensResponse{
 		Response: mainresponse.NewOK(),
 	}
-
 	data, err := json.Marshal(response)
 
 	if err != nil {

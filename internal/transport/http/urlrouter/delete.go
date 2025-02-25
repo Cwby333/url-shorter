@@ -7,9 +7,9 @@ import (
 	"log/slog"
 	"net/http"
 
-	validaterequests "github.com/Cwby333/url-shorter/internal/transport/httpsrv/lib/validaterequsts"
-	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/mainresponse"
-	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/respforusers"
+	"github.com/Cwby333/url-shorter/internal/transport/http/lib/mainresponse"
+	"github.com/Cwby333/url-shorter/internal/transport/http/lib/respforusers"
+	validaterequests "github.com/Cwby333/url-shorter/internal/transport/http/lib/validaterequsts"
 
 	"github.com/go-playground/validator/v10"
 )
@@ -60,8 +60,7 @@ func (router *Router) Delete(w http.ResponseWriter, r *http.Request) {
 
 	logger = logger.With("component", "delete handler")
 
-	var req RequestDelete
-
+	req := RequestDelete{}
 	err := json.NewDecoder(r.Body).Decode(&req)
 
 	if err != nil {

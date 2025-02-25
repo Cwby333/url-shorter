@@ -7,8 +7,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	validaterequests "github.com/Cwby333/url-shorter/internal/transport/httpsrv/lib/validaterequsts"
-	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/mainresponse"
+	"github.com/Cwby333/url-shorter/internal/transport/http/lib/mainresponse"
+	validaterequests "github.com/Cwby333/url-shorter/internal/transport/http/lib/validaterequsts"
 	"github.com/Cwby333/url-shorter/pkg/generalerrors"
 
 	"github.com/go-playground/validator/v10"
@@ -61,8 +61,7 @@ func (router Router) Login(w http.ResponseWriter, r *http.Request) {
 
 	logger = logger.With("component", "login handler")
 
-	var req LoginRequest
-
+	req := LoginRequest{}
 	err := json.NewDecoder(r.Body).Decode(&req)
 
 	if err != nil {
@@ -86,7 +85,6 @@ func (router Router) Login(w http.ResponseWriter, r *http.Request) {
 	r.Body.Close()
 
 	validate := validator.New(validator.WithRequiredStructEnabled())
-
 	err = validate.Struct(req)
 
 	if err != nil {
@@ -163,7 +161,6 @@ func (router Router) Login(w http.ResponseWriter, r *http.Request) {
 	response := LoginResponse{
 		Response: mainresponse.NewOK(),
 	}
-
 	data, err := json.Marshal(response)
 
 	if err != nil {

@@ -14,7 +14,8 @@ import (
 	"github.com/Cwby333/url-shorter/internal/repository/redis"
 	"github.com/Cwby333/url-shorter/internal/services/urlsservice"
 	"github.com/Cwby333/url-shorter/internal/services/usersservice"
-	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/server"
+	"github.com/Cwby333/url-shorter/internal/transport/http/ratelimiter"
+	"github.com/Cwby333/url-shorter/internal/transport/http/server"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -49,7 +50,7 @@ func (app App) Run() {
 
 	if err != nil {
 		log.Printf("config error: %v", err.Error())
-		panic(1)
+		return
 	}
 
 	logger := logger.New(cfg.Env)
@@ -91,7 +92,18 @@ func (app App) Run() {
 		return
 	}
 
-	server, err := httpserver.New(ctx, cfg.HTTPServer, urlService, logger, userService)
+	rateLimiter, err := ratelimiter.NewLimiter(cfg.RateLimiter.Limit, cfg.RateLimiter.TTL, ctx)
+
+	if err != nil {
+		logger.Error("setup ratelimiter", slog.String("error", err.Error()))
+		return
+	}
+	defer func() {
+		logger.Info("ratelimiter shutdown")
+		rateLimiter.Shutdown()
+	}()
+
+	server, err := httpserver.New(ctx, cfg.HTTPServer, urlService, logger, userService, rateLimiter)
 
 	if err != nil {
 		logger.Error("server init", slog.String("error", err.Error()))

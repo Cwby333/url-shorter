@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	validaterequests "github.com/Cwby333/url-shorter/internal/transport/httpsrv/lib/validaterequsts"
-	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/mainresponse"
+	"github.com/Cwby333/url-shorter/internal/transport/http/lib/mainresponse"
+	validaterequests "github.com/Cwby333/url-shorter/internal/transport/http/lib/validaterequsts"
 	"github.com/Cwby333/url-shorter/pkg/generalerrors"
 	"github.com/go-playground/validator/v10"
 )
@@ -46,7 +46,7 @@ func (router Router) Update(w http.ResponseWriter, r *http.Request) {
 
 	logger = logger.With("component", "update user handler")
 
-	var req UpdateRequest
+	req := UpdateRequest{}
 	err := json.NewDecoder(r.Body).Decode(&req)
 
 	if err != nil {

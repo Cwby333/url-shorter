@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Cwby333/url-shorter/internal/transport/httpsrv/urlrouter/lib/mainresponse"
+	"github.com/Cwby333/url-shorter/internal/transport/http/lib/mainresponse"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -68,7 +68,6 @@ func (router Router) Logout(w http.ResponseWriter, r *http.Request) {
 		Response: mainresponse.NewOK(),
 		Message:  SuccessLogout,
 	}
-
 	data, err := json.Marshal(resp)
 
 	if err != nil {
