@@ -7,8 +7,8 @@ import (
 
 	"github.com/Cwby333/url-shorter/internal/config"
 	"github.com/Cwby333/url-shorter/internal/entity/users"
+	"github.com/Cwby333/url-shorter/internal/generalerrors"
 	"github.com/Cwby333/url-shorter/internal/logger"
-	"github.com/Cwby333/url-shorter/pkg/generalerrors"
 )
 
 type UsersRepository interface {

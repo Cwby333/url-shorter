@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Cwby333/url-shorter/pkg/generalerrors"
+	"github.com/Cwby333/url-shorter/internal/generalerrors"
 	"github.com/redis/go-redis/v9"
 )
 

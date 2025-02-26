@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/Cwby333/url-shorter/internal/entity/users"
-	"github.com/Cwby333/url-shorter/pkg/generalerrors"
+	"github.com/Cwby333/url-shorter/internal/generalerrors"
 	"github.com/jackc/pgx/v5"
 )
 

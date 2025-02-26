@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Cwby333/url-shorter/internal/generalerrors"
 	"github.com/Cwby333/url-shorter/internal/logger"
-	"github.com/Cwby333/url-shorter/pkg/generalerrors"
 )
 
 type URLRepository interface {

@@ -7,9 +7,9 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/Cwby333/url-shorter/internal/generalerrors"
 	"github.com/Cwby333/url-shorter/internal/transport/http/lib/mainresponse"
 	validaterequests "github.com/Cwby333/url-shorter/internal/transport/http/lib/validaterequsts"
-	"github.com/Cwby333/url-shorter/pkg/generalerrors"
 
 	"github.com/go-playground/validator/v10"
 )

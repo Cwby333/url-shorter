@@ -9,12 +9,12 @@ import (
 
 	"github.com/Cwby333/url-shorter/internal/entity/tokens"
 	"github.com/Cwby333/url-shorter/internal/entity/users"
+	"github.com/Cwby333/url-shorter/internal/generalerrors"
 	"github.com/Cwby333/url-shorter/internal/transport/http/middlewares/jwtmiddle"
 	"github.com/Cwby333/url-shorter/internal/transport/http/middlewares/limitermidde"
 	"github.com/Cwby333/url-shorter/internal/transport/http/middlewares/logging"
 	"github.com/Cwby333/url-shorter/internal/transport/http/middlewares/requestid"
 	"github.com/Cwby333/url-shorter/internal/transport/http/ratelimiter"
-	"github.com/Cwby333/url-shorter/pkg/generalerrors"
 )
 
 type UsersService interface {

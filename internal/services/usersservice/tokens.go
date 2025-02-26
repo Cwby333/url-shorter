@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Cwby333/url-shorter/internal/entity/tokens"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
