@@ -19,24 +19,16 @@ import (
 
 type UsersService interface {
 	CreateUser(ctx context.Context, username string, password string) (uuid string, err error)
-
 	GetUserByUUID(ctx context.Context, uuid string) (users.User, error)
-
 	LogIn(ctx context.Context, username string, password string) (accessClaims tokens.JWTAccessClaims, refreshClaims tokens.JWTRefreshClaims, err error)
-
 	LogOut(ctx context.Context, tokenID string, ttl time.Duration) error
-
-	CreateJWT(ctx context.Context, subject string) (accessClaims tokens.JWTAccessClaims, refreshClaims tokens.JWTRefreshClaims, err error)
-
-	CheckBlacklist(ctx context.Context, tokenID string) error
-
-	CheckCountOfUsesRefreshToken(ctx context.Context, tokenID string, ttl time.Duration) error
-
-	UseRefresh(ctx context.Context, tokenID string) error
-
+	BlockUser(ctx context.Context, uuid string) error
 	ChangeCredentials(ctx context.Context, username string, password string, newUsername string, newPassword string) (users.User, error)
 
-	BlockUser(ctx context.Context, uuid string) error
+	CreateJWT(ctx context.Context, subject string) (accessClaims tokens.JWTAccessClaims, refreshClaims tokens.JWTRefreshClaims, err error)
+	CheckBlacklist(ctx context.Context, tokenID string) error
+	CheckCountOfUsesRefreshToken(ctx context.Context, tokenID string, ttl time.Duration) error
+	UseRefresh(ctx context.Context, tokenID string) error
 }
 
 type Router struct {

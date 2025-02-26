@@ -12,7 +12,7 @@ type URLRepository interface {
 	SaveAlias(ctx context.Context, url, alias string) (int, error)
 	GetURL(ctx context.Context, alias string) (string, error)
 	DeleteURL(ctx context.Context, alias string) error
-	UpdateURL(ctx context.Context, newURL, alias string) error
+	UpdateURL(ctx context.Context, newURL, alias string) (url string, err error)
 }
 
 type URLCache interface {
@@ -22,8 +22,9 @@ type URLCache interface {
 }
 
 type URLService struct {
-	repo  URLRepository
-	cache URLCache
+	repo   URLRepository
+	cache  URLCache
+	logger logger.Logger
 }
 
 func New(repo URLRepository, cache URLCache, logger logger.Logger) (URLService, error) {
@@ -41,7 +42,8 @@ func New(repo URLRepository, cache URLCache, logger logger.Logger) (URLService, 
 	}
 
 	return URLService{
-		repo:  repo,
-		cache: cache,
+		repo:   repo,
+		cache:  cache,
+		logger: logger,
 	}, nil
 }

@@ -137,12 +137,6 @@ func (router *Router) Delete(w http.ResponseWriter, r *http.Request) {
 
 	logger.Info("success delete handler")
 
-	err = router.urlService.RemoveResponseFromCache(r.Context(), req.Alias)
-
-	if err != nil {
-		logger.Error("cache", slog.String("error", err.Error()))
-	}
-
 	_, err = w.Write([]byte("Success deleted"))
 
 	if err != nil {

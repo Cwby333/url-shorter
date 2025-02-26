@@ -168,12 +168,6 @@ func (router *Router) UpdateURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = router.urlService.SaveResponseInCache(r.Context(), req.Alias, string(data))
-
-	if err != nil {
-		logger.Error("cache", slog.String("error", err.Error()))
-	}
-
 	_, err = w.Write(data)
 
 	if err != nil {

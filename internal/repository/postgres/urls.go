@@ -14,7 +14,7 @@ const (
 	insertAliasQuery   = `INSERT INTO urls_alias(url, alias) VALUES($1, $2) RETURNING ID`
 	selectURLItemQuery = `SELECT ID, url, alias FROM urls_alias WHERE alias = $1`
 	deleteURLQuery     = `DELETE FROM urls_alias WHERE alias = $1`
-	updateURLQuery     = `UPDATE urls_alias SET url = $1 WHERE alias = $2`
+	updateURLQuery     = `UPDATE urls_alias SET url = $1 WHERE alias = $2 RETURNING url`
 )
 
 func (conn Postgres) SaveAlias(ctx context.Context, url, alias string) (id int, err error) {
@@ -140,12 +140,12 @@ func (conn Postgres) DeleteURL(ctx context.Context, alias string) (err error) {
 	return nil
 }
 
-func (conn Postgres) UpdateURL(ctx context.Context, newURL, alias string) (err error) {
+func (conn Postgres) UpdateURL(ctx context.Context, newURL, alias string) (url string, err error) {
 	const op = "repo/postgresql/postgres.go.DeleteURL"
 	tx, err := conn.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: ReadWriteAccessMode})
 
 	if err != nil {
-		return fmt.Errorf("%s: %w", op, err)
+		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
 	defer func() {
@@ -165,14 +165,22 @@ func (conn Postgres) UpdateURL(ctx context.Context, newURL, alias string) (err e
 	rows, err := tx.Query(ctx, updateURLQuery, newURL, alias)
 
 	if err != nil {
-		return fmt.Errorf("%s: %w", op, err)
+		return "", fmt.Errorf("%s: %w", op, err)
+	}
+
+	for rows.Next() {
+		err = rows.Scan(&url)
+
+		if err != nil {
+			return "", fmt.Errorf("%s: %w", op, err)
+		}
 	}
 
 	rows.Close()
 
 	if rows.CommandTag().RowsAffected() < 1 {
-		return fmt.Errorf("%s: %w", op, generalerrors.ErrAliasNotFound)
+		return "", fmt.Errorf("%s: %w", op, generalerrors.ErrAliasNotFound)
 	}
 
-	return nil
+	return url, nil
 }

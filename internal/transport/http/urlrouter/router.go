@@ -20,10 +20,6 @@ type URLService interface {
 	GetURL(ctx context.Context, alias string) (string, error)
 	DeleteURL(ctx context.Context, alias string) error
 	UpdateURL(ctx context.Context, alias, newURL string) error
-
-	SaveResponseInCache(ctx context.Context, alias string, response string) error
-	GetResponseFromCache(ctx context.Context, alias string) (string, error)
-	RemoveResponseFromCache(ctx context.Context, alias string) error
 }
 
 type Router struct {

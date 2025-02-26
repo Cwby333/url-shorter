@@ -111,31 +111,6 @@ func (router *Router) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, err := router.urlService.GetResponseFromCache(r.Context(), req.Alias)
-
-	if err != nil {
-		if errors.Is(err, generalerrors.ErrCacheMiss) {
-			logger.Info("no found in cache", slog.String("alias", req.Alias))
-		} else {
-			logger.Error("cache", slog.String("error", err.Error()))
-		}
-
-		_ = response
-	} else {
-		logger.Info("success get handler, find from cache")
-
-		_, err = w.Write([]byte(response))
-
-		if err != nil {
-			logger.Error("response writer", slog.String("error", err.Error()))
-
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
-		}
-
-		return
-	}
-
 	url, err := router.urlService.GetURL(r.Context(), req.Alias)
 
 	if err != nil {
@@ -180,12 +155,6 @@ func (router *Router) Get(w http.ResponseWriter, r *http.Request) {
 		logger.Error("json marshal", slog.String("error", err.Error()))
 		http.Error(w, resp.URL, http.StatusInternalServerError)
 		return
-	}
-
-	err = router.urlService.SaveResponseInCache(r.Context(), req.Alias, string(responseJSON))
-
-	if err != nil {
-		logger.Error("cache", slog.String("error", err.Error()))
 	}
 
 	logger.Info("success handle request")
