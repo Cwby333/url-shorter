@@ -8,6 +8,7 @@ import (
 
 	"github.com/Cwby333/url-shorter/internal/transport/http/lib/mainresponse"
 	"github.com/Cwby333/url-shorter/internal/transport/http/lib/respforusers"
+	"github.com/Cwby333/url-shorter/internal/transport/http/lib/typeasserterror"
 	validaterequests "github.com/Cwby333/url-shorter/internal/transport/http/lib/validaterequsts"
 	"github.com/Cwby333/url-shorter/pkg/generalerrors"
 
@@ -28,27 +29,16 @@ type RegisterResponse struct {
 func (router Router) Register(w http.ResponseWriter, r *http.Request) {
 	logger, ok := r.Context().Value("logger").(*slog.Logger)
 
-	if !ok {
-		slog.Error("wrong type assertion to logger")
+	err := typeasserterror.Check(ok, w, slog.Default())
 
-		resp := mainresponse.NewError("internal error")
-		data, err := json.Marshal(resp)
-
-		if err != nil {
-			slog.Error("json marshal", slog.String("error", err.Error()))
-
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
-		}
-
-		http.Error(w, string(data), http.StatusInternalServerError)
+	if err != nil {
 		return
 	}
 
 	logger = logger.With("component", "register handler")
 
 	request := RegisterRequest{}
-	err := json.NewDecoder(r.Body).Decode(&request)
+	err = json.NewDecoder(r.Body).Decode(&request)
 
 	if err != nil {
 		logger.Error("json decoder", slog.String("error", err.Error()))
@@ -69,7 +59,6 @@ func (router Router) Register(w http.ResponseWriter, r *http.Request) {
 	r.Body.Close()
 
 	validate := validator.New(validator.WithRequiredStructEnabled())
-
 	err = validate.Struct(request)
 
 	if err != nil {

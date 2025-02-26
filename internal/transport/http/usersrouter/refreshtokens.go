@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Cwby333/url-shorter/internal/transport/http/lib/mainresponse"
+	"github.com/Cwby333/url-shorter/internal/transport/http/lib/typeasserterror"
 	"github.com/Cwby333/url-shorter/pkg/generalerrors"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -24,20 +25,9 @@ type RefreshTokensResponse struct {
 func (router Router) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 	logger, ok := r.Context().Value("logger").(*slog.Logger)
 
-	if !ok {
-		slog.Error("wrong type assertion to logger")
+	err := typeasserterror.Check(ok, w, slog.Default())
 
-		resp := mainresponse.NewError("internal error")
-		data, err := json.Marshal(resp)
-
-		if err != nil {
-			slog.Error("json marshal", slog.String("error", err.Error()))
-
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
-		}
-
-		http.Error(w, string(data), http.StatusInternalServerError)
+	if err != nil {
 		return
 	}
 
@@ -49,7 +39,7 @@ func (router Router) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 	dur := time.Duration(int64(claims["exp"].(float64) * forMultiplicationToUnitTime)).Seconds()
 	dur = (dur - float64(time.Now().Unix())) * forMultiplicationToUnitTime
 
-	err := router.service.CheckCountOfUsesRefreshToken(r.Context(), tokenID, time.Duration(dur))
+	err = router.service.CheckCountOfUsesRefreshToken(r.Context(), tokenID, time.Duration(dur))
 
 	if err != nil {
 		if errors.Is(err, generalerrors.ErrToManyUseOfRefreshToken) {

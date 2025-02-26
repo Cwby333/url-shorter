@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/Cwby333/url-shorter/internal/transport/http/lib/mainresponse"
+	"github.com/Cwby333/url-shorter/internal/transport/http/lib/typeasserterror"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -16,20 +17,9 @@ func NewRefresh(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		logger, ok := r.Context().Value("logger").(*slog.Logger)
 
-		if !ok {
-			slog.Error("wrong type assertion to logger")
+		err := typeasserterror.Check(ok, w, slog.Default())
 
-			resp := mainresponse.NewError("internal error")
-			data, err := json.Marshal(resp)
-
-			if err != nil {
-				slog.Error("json marshal", slog.String("error", err.Error()))
-
-				http.Error(w, "internal error", http.StatusInternalServerError)
-				return
-			}
-
-			http.Error(w, string(data), http.StatusInternalServerError)
+		if err != nil {
 			return
 		}
 
@@ -102,40 +92,17 @@ func NewRefresh(next http.Handler) http.Handler {
 
 		claims, ok := t.Claims.(jwt.MapClaims)
 
-		if !ok {
-			logger.Error("wrong type assertion to jwt.MapClaims")
+		err = typeasserterror.Check(ok, w, logger)
 
-			resp := mainresponse.NewError("internal error")
-
-			data, err := json.Marshal(resp)
-
-			if err != nil {
-				logger.Error("json marshal", slog.String("error", err.Error()))
-
-				http.Error(w, "internal error", http.StatusInternalServerError)
-				return
-			}
-
-			http.Error(w, string(data), http.StatusInternalServerError)
+		if err != nil {
 			return
 		}
 
 		typeToken, ok := claims["type"].(string)
 
-		if !ok {
-			logger.Error("type assertion error")
+		err = typeasserterror.Check(ok, w, logger)
 
-			resp := mainresponse.NewError("internal error")
-			data, err := json.Marshal(resp)
-
-			if err != nil {
-				logger.Error("json marshal", slog.String("error", err.Error()))
-
-				http.Error(w, "internal error", http.StatusInternalServerError)
-				return
-			}
-
-			http.Error(w, string(data), http.StatusInternalServerError)
+		if err != nil {
 			return
 		}
 

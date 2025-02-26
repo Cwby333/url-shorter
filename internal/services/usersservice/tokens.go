@@ -106,3 +106,15 @@ func (service UserService) UseRefresh(ctx context.Context, tokenID string) error
 
 	return nil
 }
+
+func (service UserService) CheckBlacklist(ctx context.Context, tokenID string) error {
+	const op = "internal/services/userservice/CheckRefresh"
+
+	err := service.invalidator.CheckBlacklist(ctx, tokenID)
+
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
+}

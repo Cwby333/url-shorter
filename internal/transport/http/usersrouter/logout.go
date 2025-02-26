@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Cwby333/url-shorter/internal/transport/http/lib/mainresponse"
+	"github.com/Cwby333/url-shorter/internal/transport/http/lib/typeasserterror"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -22,20 +23,9 @@ type LogoutResponse struct {
 func (router Router) Logout(w http.ResponseWriter, r *http.Request) {
 	logger, ok := r.Context().Value("logger").(*slog.Logger)
 
-	if !ok {
-		slog.Error("wrong type assertion to logger")
+	err := typeasserterror.Check(ok, w, slog.Default())
 
-		resp := mainresponse.NewError("internal error")
-		data, err := json.Marshal(resp)
-
-		if err != nil {
-			slog.Error("json marshal", slog.String("error", err.Error()))
-
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
-		}
-
-		http.Error(w, string(data), http.StatusInternalServerError)
+	if err != nil {
 		return
 	}
 
@@ -45,7 +35,7 @@ func (router Router) Logout(w http.ResponseWriter, r *http.Request) {
 	dur := time.Duration(int64(claims["exp"].(float64) * 1000000000)).Seconds()
 	dur = (dur - float64(time.Now().Unix())) * 1000000000
 
-	err := router.service.LogOut(r.Context(), claims["jti"].(string), time.Duration(dur))
+	err = router.service.LogOut(r.Context(), claims["jti"].(string), time.Duration(dur))
 
 	if err != nil {
 		logger.Error("logout", slog.String("error", err.Error()))

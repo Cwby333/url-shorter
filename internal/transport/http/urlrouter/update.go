@@ -9,6 +9,7 @@ import (
 
 	"github.com/Cwby333/url-shorter/internal/transport/http/lib/mainresponse"
 	"github.com/Cwby333/url-shorter/internal/transport/http/lib/respforusers"
+	"github.com/Cwby333/url-shorter/internal/transport/http/lib/typeasserterror"
 	validaterequests "github.com/Cwby333/url-shorter/internal/transport/http/lib/validaterequsts"
 	"github.com/Cwby333/url-shorter/pkg/generalerrors"
 	"github.com/go-playground/validator/v10"
@@ -43,27 +44,16 @@ func newUpdateURLResponse(err error) ([]byte, error) {
 func (router *Router) UpdateURL(w http.ResponseWriter, r *http.Request) {
 	logger, ok := r.Context().Value("logger").(*slog.Logger)
 
-	if !ok {
-		slog.Error("wrong type assertion to logger")
+	err := typeasserterror.Check(ok, w, slog.Default())
 
-		resp := mainresponse.NewError("internal error")
-		data, err := json.Marshal(resp)
-
-		if err != nil {
-			slog.Error("json marshal", slog.String("error", err.Error()))
-
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
-		}
-
-		http.Error(w, string(data), http.StatusInternalServerError)
+	if err != nil {
 		return
 	}
 
 	logger = logger.With("component", "update url handler")
 
 	req := RequestUpdateURL{}
-	err := json.NewDecoder(r.Body).Decode(&req)
+	err = json.NewDecoder(r.Body).Decode(&req)
 
 	if err != nil {
 		out, err := newUpdateURLResponse(err)
