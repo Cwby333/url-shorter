@@ -4,26 +4,29 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"math/rand/v2"
 	"net/http"
 
 	"github.com/Cwby333/url-shorter/internal/generalerrors"
 	"github.com/Cwby333/url-shorter/internal/transport/http/lib/mainresponse"
 	"github.com/Cwby333/url-shorter/internal/transport/http/lib/respforusers"
 	"github.com/Cwby333/url-shorter/internal/transport/http/lib/typeasserterror"
-	validaterequests "github.com/Cwby333/url-shorter/internal/transport/http/lib/validaterequsts"
+)
 
-	"github.com/go-playground/validator/v10"
+const (
+	defaultUsernameLength = 8
+	defaultPasswordLength = 8
 )
 
 type RegisterRequest struct {
-	Username string `json:"username" validate:"required"`
-	Password string `json:"password" validate:"required"`
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 type RegisterResponse struct {
 	mainresponse.Response
-	UUID     string `json:"uuid"`
-	Username string `json:"username"`
+	UUID     string `json:"uuid,omitempty"`
+	Username string `json:"username,omitempty"`
 }
 
 func (router Router) Register(w http.ResponseWriter, r *http.Request) {
@@ -58,40 +61,28 @@ func (router Router) Register(w http.ResponseWriter, r *http.Request) {
 
 	r.Body.Close()
 
-	validate := validator.New(validator.WithRequiredStructEnabled())
-	err = validate.Struct(request)
+	if request.Username == "" {
+		out := make([]rune, 0, defaultUsernameLength)
 
-	if err != nil {
-		logger.Info("bad request", slog.String("error", err.Error()))
-
-		errorsSlice := err.(validator.ValidationErrors)
-		errForResp := validaterequests.Validate(errorsSlice)
-		resp := RegisterResponse{
-			UUID:     "",
-			Username: "",
-			Response: mainresponse.NewError(errForResp...),
+		for range defaultUsernameLength {
+			out = append(out, router.dataRandomUsernamePassword[rand.IntN(len(router.dataRandomUsernamePassword))])
 		}
-		data, err := json.Marshal(resp)
+
+		request.Username = string(out)
+	}
+	if len(request.Password) < 8 {
+		logger.Info("to small password")
+
+		response, err := newCreateResponse(errors.New("len password smaller than 8"))
 
 		if err != nil {
-			logger.Error("json marshall error", slog.String("error", err.Error()))
+			logger.Error("json marshal", slog.String("error", err.Error()))
 
-			out, err := newCreateResponse(errors.New("bad request"))
-
-			if err != nil {
-				logger.Error("json marshall", slog.String("error", err.Error()))
-
-				http.Error(w, "bad request", http.StatusBadRequest)
-
-				return
-			}
-
-			http.Error(w, string(out), http.StatusBadRequest)
-
+			http.Error(w, "password smaller than 8", http.StatusBadRequest)
 			return
 		}
 
-		http.Error(w, string(data), http.StatusBadRequest)
+		http.Error(w, string(response), http.StatusBadRequest)
 		return
 	}
 

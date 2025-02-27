@@ -4,10 +4,13 @@ import (
 	"context"
 	"log"
 	"log/slog"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
+	"github.com/Cwby333/url-shorter/internal/apprunnrer/gracefuler"
 	"github.com/Cwby333/url-shorter/internal/config"
 	"github.com/Cwby333/url-shorter/internal/logger"
 	"github.com/Cwby333/url-shorter/internal/repository/postgres"
@@ -18,6 +21,10 @@ import (
 	"github.com/Cwby333/url-shorter/internal/transport/http/server"
 
 	"golang.org/x/sync/errgroup"
+)
+
+const (
+	DefaultTimeoutForCloseAll = time.Duration(time.Second * 10)
 )
 
 const (
@@ -37,9 +44,7 @@ func (app App) Run() {
 	defer cancel()
 
 	signalChan := make(chan os.Signal, 1)
-
 	group, groupCtx := errgroup.WithContext(ctx)
-
 	go func() {
 		signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
 		<-signalChan
@@ -56,16 +61,15 @@ func (app App) Run() {
 	logger := logger.New(cfg.Env)
 	slog.SetDefault(logger.Logger)
 
+	closer := gracefuler.New(logger.Logger)
+
 	pool, err := postgres.Connect(ctx, cfg.Database)
 
 	if err != nil {
 		logger.Error("database connect", slog.String("error", err.Error()))
 		return
 	}
-	defer func() {
-		logger.Info("close db connect")
-		pool.Close()
-	}()
+	closer.Add(pool)
 
 	client, err := myredis.New(ctx, cfg.Redis)
 
@@ -73,10 +77,7 @@ func (app App) Run() {
 		logger.Error("", slog.String("error", err.Error()))
 		return
 	}
-	defer func() {
-		logger.Info("close cache connect")
-		client.Close()
-	}()
+	closer.Add(client)
 
 	urlService, err := urlsservice.New(pool, client, logger)
 
@@ -98,10 +99,7 @@ func (app App) Run() {
 		logger.Error("setup ratelimiter", slog.String("error", err.Error()))
 		return
 	}
-	defer func() {
-		logger.Info("ratelimiter shutdown")
-		rateLimiter.Shutdown()
-	}()
+	closer.Add(rateLimiter)
 
 	server, err := httpserver.New(ctx, cfg.HTTPServer, urlService, logger, userService, rateLimiter)
 
@@ -133,5 +131,16 @@ func (app App) Run() {
 
 	if err := group.Wait(); err != nil {
 		logger.Info("exit", slog.String("error", err.Error()))
+
+		ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeoutForCloseAll)
+		defer cancel()
+
+		errors := closer.Close(ctx)
+
+		if len(errors) > 0 {
+			for i := range errors {
+				logger.Error("error in close", slog.String("error", errors[i].Error()))
+			}
+		}
 	}
 }

@@ -36,6 +36,8 @@ type Router struct {
 	service UsersService
 	limiter ratelimiter.Limiter
 	logger  *slog.Logger
+
+	dataRandomUsernamePassword []rune
 }
 
 func New(service UsersService, logger *slog.Logger, limiter ratelimiter.Limiter) (Router, error) {
@@ -45,11 +47,15 @@ func New(service UsersService, logger *slog.Logger, limiter ratelimiter.Limiter)
 		return Router{}, fmt.Errorf("%s: %w", op, generalerrors.ErrNilPointerInInterface)
 	}
 
+	data := []rune("QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm1234567890")
+
 	return Router{
 		Router:  http.NewServeMux(),
 		service: service,
 		limiter: limiter,
 		logger:  logger,
+
+		dataRandomUsernamePassword: data,
 	}, nil
 }
 

@@ -43,6 +43,18 @@ func New(ctx context.Context, cfg config.Redis) (Redis, error) {
 	}, nil
 }
 
-func (r Redis) Close() {
-	r.client.Close()
+func (r Redis) Close() chan error {
+	err := r.client.Close()
+	ch := make(chan error, 1)
+	if err != nil {
+		ch <- err
+		return ch
+	}
+
+	ch <- nil
+	return ch
+}
+
+func (r Redis) ContextInfo() string {
+	return "redis"
 }

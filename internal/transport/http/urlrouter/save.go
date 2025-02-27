@@ -21,10 +21,6 @@ const (
 	aliasRandLength = 6
 )
 
-var (
-	data = []rune("QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm1234567890")
-)
-
 type RequestSave struct {
 	URL   string `json:"url" validate:"required,url"`
 	Alias string `json:"alias,omitempty"`
@@ -134,7 +130,7 @@ func (router *Router) Save(w http.ResponseWriter, r *http.Request) {
 		out := make([]rune, 0, aliasRandLength)
 
 		for range aliasRandLength {
-			out = append(out, data[rand.Int64N(int64(len(data)))])
+			out = append(out, router.sliceForRandAlias[rand.Int64N(int64(len(router.sliceForRandAlias)))])
 		}
 
 		req.Alias = string(out)

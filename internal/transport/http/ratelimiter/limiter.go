@@ -44,10 +44,18 @@ func NewLimiter(limit int, ttl time.Duration, mainCtx context.Context) (Limiter,
 	}, nil
 }
 
-func (limiter Limiter) Shutdown() {
+func (limiter Limiter) Close() chan error {
 	for _, client := range limiter.storage {
 		close(client.limiter)
 	}
+
+	ch := make(chan error, 1)
+	ch <- nil
+	return ch
+}
+
+func (limiter Limiter) ContextInfo() string {
+	return "ratelimiter"
 }
 
 func (limiter Limiter) newClient(ip string) {

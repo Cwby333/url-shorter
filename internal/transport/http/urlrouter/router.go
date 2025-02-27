@@ -28,6 +28,8 @@ type Router struct {
 	limiter    ratelimiter.Limiter
 	logger     logger.Logger
 	Router     *http.ServeMux
+
+	sliceForRandAlias []rune
 }
 
 func New(service URLService, logger logger.Logger, limiter ratelimiter.Limiter) (*Router, error) {
@@ -39,17 +41,20 @@ func New(service URLService, logger logger.Logger, limiter ratelimiter.Limiter) 
 		return nil, generalerrors.ErrNilPointerInInterface
 	}
 
+	data := []rune("QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm1234567890")
+
 	return &Router{
-		mu:         &sync.RWMutex{},
-		urlService: service,
-		limiter:    limiter,
-		logger:     logger,
-		Router:     http.NewServeMux(),
+		mu:                &sync.RWMutex{},
+		urlService:        service,
+		limiter:           limiter,
+		logger:            logger,
+		sliceForRandAlias: data,
+		Router:            http.NewServeMux(),
 	}, nil
 }
 
 func (router *Router) Run() {
-	router.Router.Handle("POST /create", requestid.New(router.logger.Logger)(logging.New(jwtmiddle.NewAccess(limitermidde.New(router.limiter)(http.HandlerFunc(router.Save))))))
+	router.Router.Handle("dataPOST /create", requestid.New(router.logger.Logger)(logging.New(jwtmiddle.NewAccess(limitermidde.New(router.limiter)(http.HandlerFunc(router.Save))))))
 	router.Router.Handle("GET /get", requestid.New(router.logger.Logger)(logging.New(limitermidde.New(router.limiter)(http.HandlerFunc(router.Get)))))
 	router.Router.Handle("DELETE /delete", requestid.New(router.logger.Logger)(logging.New(jwtmiddle.NewAccess(limitermidde.New(router.limiter)(http.HandlerFunc(router.Delete))))))
 	router.Router.Handle("PUT /update", requestid.New(router.logger.Logger)(logging.New(jwtmiddle.NewAccess(limitermidde.New(router.limiter)(http.HandlerFunc(router.UpdateURL))))))

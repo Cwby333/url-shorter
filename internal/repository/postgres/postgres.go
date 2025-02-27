@@ -51,6 +51,13 @@ func Connect(ctx context.Context, cfg config.Database) (Postgres, error) {
 	}, nil
 }
 
-func (conn Postgres) Close() {
+func (conn Postgres) Close() chan error {
 	conn.pool.Close()
+	ch := make(chan error, 1)
+	ch <- nil
+	return ch
+}
+
+func (conn Postgres) ContextInfo() string {
+	return "postgres"
 }
