@@ -21,11 +21,10 @@ type Limiter struct {
 type Client struct {
 	mu *sync.Mutex
 
-	limit          int
-	ttl            time.Duration
-	ctx            context.Context
-	limiter        chan struct{}
-	renewalStarted bool
+	limit   int
+	ttl     time.Duration
+	ctx     context.Context
+	limiter chan struct{}
 }
 
 func NewLimiter(limit int, ttl time.Duration, mainCtx context.Context) (Limiter, error) {
@@ -60,26 +59,17 @@ func (limiter Limiter) ContextInfo() string {
 
 func (limiter Limiter) newClient(ip string) {
 	client := Client{
-		mu:             &sync.Mutex{},
-		limit:          limiter.limit,
-		ttl:            limiter.ttl,
-		ctx:            limiter.mainCtx,
-		limiter:        make(chan struct{}, limiter.limit),
-		renewalStarted: false,
+		mu:      &sync.Mutex{},
+		limit:   limiter.limit,
+		ttl:     limiter.ttl,
+		ctx:     limiter.mainCtx,
+		limiter: make(chan struct{}, limiter.limit),
 	}
 
 	limiter.storage[ip] = client
 }
 
 func (client Client) startRenewal() {
-	client.mu.Lock()
-	if client.renewalStarted == true {
-		client.mu.Unlock()
-		return
-	}
-	client.renewalStarted = true
-	client.mu.Unlock()
-
 	go func() {
 		for {
 			select {
@@ -111,9 +101,8 @@ func (limiter Limiter) Iterate(ip string) error {
 	if !ok {
 		limiter.newClient(ip)
 		client = limiter.storage[ip]
+		client.startRenewal()
 	}
-
-	client.startRenewal()
 
 	select {
 	case client.limiter <- struct{}{}:

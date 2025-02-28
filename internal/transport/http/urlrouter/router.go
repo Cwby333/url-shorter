@@ -13,6 +13,7 @@ import (
 	"github.com/Cwby333/url-shorter/internal/transport/http/middlewares/logging"
 	"github.com/Cwby333/url-shorter/internal/transport/http/middlewares/requestid"
 	"github.com/Cwby333/url-shorter/internal/transport/http/ratelimiter"
+	"github.com/go-playground/validator/v10"
 )
 
 type URLService interface {
@@ -28,6 +29,7 @@ type Router struct {
 	limiter    ratelimiter.Limiter
 	logger     logger.Logger
 	Router     *http.ServeMux
+	validator  *validator.Validate
 
 	sliceForRandAlias []rune
 }
@@ -49,6 +51,7 @@ func New(service URLService, logger logger.Logger, limiter ratelimiter.Limiter) 
 		limiter:           limiter,
 		logger:            logger,
 		sliceForRandAlias: data,
+		validator:         validator.New(validator.WithRequiredStructEnabled()),
 		Router:            http.NewServeMux(),
 	}, nil
 }

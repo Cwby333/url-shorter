@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 
@@ -57,26 +58,24 @@ func (router *Router) Get(w http.ResponseWriter, r *http.Request) {
 	err = json.NewDecoder(r.Body).Decode(&req)
 
 	if err != nil {
-		logger.Error("json decoder", slog.String("error", err.Error()))
+		if !errors.Is(err, io.EOF) {
+			out, err := newResponseGet(errors.New("internal error"))
 
-		out, err := newResponseGet(errors.New("internal error"))
+			if err != nil {
+				logger.Error("json marshall", slog.String("error", err.Error()))
 
-		if err != nil {
-			logger.Error("json marshall", slog.String("error", err.Error()))
+				http.Error(w, respforusers.ErrInternalError, http.StatusInternalServerError)
+				return
+			}
 
-			http.Error(w, respforusers.ErrInternalError, http.StatusInternalServerError)
+			http.Error(w, string(out), http.StatusInternalServerError)
 			return
 		}
-
-		http.Error(w, string(out), http.StatusInternalServerError)
-		return
 	}
 
 	r.Body.Close()
 
-	validate := validator.New(validator.WithRequiredStructEnabled())
-
-	err = validate.Struct(req)
+	err = router.validator.Struct(req)
 
 	if err != nil {
 		logger.Info("bad request", slog.String("error", err.Error()))

@@ -58,8 +58,7 @@ func (router Router) Update(w http.ResponseWriter, r *http.Request) {
 
 	r.Body.Close()
 
-	validate := validator.New(validator.WithRequiredStructEnabled())
-	err = validate.Struct(req)
+	err = router.validator.Struct(req)
 
 	if err != nil {
 		errorsValidate := err.(validator.ValidationErrors)

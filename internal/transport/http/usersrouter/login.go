@@ -84,8 +84,7 @@ func (router Router) Login(w http.ResponseWriter, r *http.Request) {
 
 	r.Body.Close()
 
-	validate := validator.New(validator.WithRequiredStructEnabled())
-	err = validate.Struct(req)
+	err = router.validator.Struct(req)
 
 	if err != nil {
 		logger.Info("bad request", slog.String("error", err.Error()))

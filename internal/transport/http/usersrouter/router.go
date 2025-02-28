@@ -15,6 +15,7 @@ import (
 	"github.com/Cwby333/url-shorter/internal/transport/http/middlewares/logging"
 	"github.com/Cwby333/url-shorter/internal/transport/http/middlewares/requestid"
 	"github.com/Cwby333/url-shorter/internal/transport/http/ratelimiter"
+	"github.com/go-playground/validator/v10"
 )
 
 type UsersService interface {
@@ -32,10 +33,11 @@ type UsersService interface {
 }
 
 type Router struct {
-	Router  *http.ServeMux
-	service UsersService
-	limiter ratelimiter.Limiter
-	logger  *slog.Logger
+	Router    *http.ServeMux
+	service   UsersService
+	limiter   ratelimiter.Limiter
+	logger    *slog.Logger
+	validator *validator.Validate
 
 	dataRandomUsernamePassword []rune
 }
@@ -50,10 +52,11 @@ func New(service UsersService, logger *slog.Logger, limiter ratelimiter.Limiter)
 	data := []rune("QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm1234567890")
 
 	return Router{
-		Router:  http.NewServeMux(),
-		service: service,
-		limiter: limiter,
-		logger:  logger,
+		Router:    http.NewServeMux(),
+		service:   service,
+		limiter:   limiter,
+		logger:    logger,
+		validator: validator.New(validator.WithRequiredStructEnabled()),
 
 		dataRandomUsernamePassword: data,
 	}, nil
