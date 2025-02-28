@@ -4,6 +4,8 @@ import (
 	"context"
 	"log"
 	"log/slog"
+	"net/http"
+	"net/http/pprof"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
@@ -128,6 +130,18 @@ func (app App) Run() {
 
 		return server.Server.Shutdown(ctxShutdown)
 	})
+
+	mux := http.NewServeMux()
+	mux.Handle("/debug/pprof/{index}", http.HandlerFunc(pprof.Index))
+	mux.Handle("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
+	pprofServer := http.Server{
+		Addr:    "localhost:9999",
+		Handler: mux,
+	}
+	go func() {
+		logger.Info("pprof server start")
+		pprofServer.ListenAndServe()
+	}()
 
 	if err := group.Wait(); err != nil {
 		logger.Info("exit", slog.String("error", err.Error()))

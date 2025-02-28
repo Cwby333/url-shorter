@@ -3,8 +3,6 @@ package registerrouters
 import (
 	"fmt"
 	"net/http"
-	"net/http/pprof"
-	_ "net/http/pprof"
 
 	"github.com/Cwby333/url-shorter/internal/logger"
 	"github.com/Cwby333/url-shorter/internal/transport/http/ratelimiter"
@@ -35,8 +33,6 @@ func New(urlService urlrouter.URLService, logger logger.Logger, usersService use
 
 	mux.Handle("/api/urls/", http.StripPrefix("/api/urls", routerURLS.Router))
 	mux.Handle("/api/users/", http.StripPrefix("/api/users", routerUsers.Router))
-	mux.Handle("/debug/pprof/{index}", http.HandlerFunc(pprof.Index))
-	mux.Handle("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
 
 	return mux, nil
 }

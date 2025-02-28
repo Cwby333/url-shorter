@@ -17,7 +17,6 @@ import (
 
 type Server struct {
 	Server *http.Server
-	ErrCh  chan error
 }
 
 func New(ctx context.Context, cfg config.HTTPServer, urlService urlrouter.URLService, logger logger.Logger, userService usersrouter.UsersService, limiter ratelimiter.Limiter) (Server, error) {
