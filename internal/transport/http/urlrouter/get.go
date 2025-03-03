@@ -158,6 +158,8 @@ func (router *Router) Get(w http.ResponseWriter, r *http.Request) {
 
 	logger.Info("success handle request")
 
+	router.popAlias.Inc(req.Alias)
+
 	_, err = w.Write(responseJSON)
 
 	if err != nil {

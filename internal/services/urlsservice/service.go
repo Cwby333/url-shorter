@@ -13,6 +13,7 @@ type URLRepository interface {
 	GetURL(ctx context.Context, alias string) (string, error)
 	DeleteURL(ctx context.Context, alias string) error
 	UpdateURL(ctx context.Context, newURL, alias string) (url string, err error)
+	SendPopAlias(ctx context.Context, alias string, countOfReq int) error
 }
 
 type URLCache interface {

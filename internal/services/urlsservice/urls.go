@@ -99,3 +99,15 @@ func (service URLService) UpdateURL(ctx context.Context, newURL, alias string) (
 
 	return nil
 }
+
+func (service URLService) SendPopAlias(ctx context.Context, alias string, countOfReq int) error {
+	const op = "internal/services/urlservice/urls.go/SendPopAlias"
+
+	err := service.repo.SendPopAlias(ctx, alias, countOfReq)
+
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
+}

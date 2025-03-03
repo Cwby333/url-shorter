@@ -11,10 +11,11 @@ import (
 )
 
 const (
-	insertAliasQuery   = `INSERT INTO urls_alias(url, alias) VALUES($1, $2) RETURNING ID`
-	selectURLItemQuery = `SELECT ID, url, alias FROM urls_alias WHERE alias = $1`
-	deleteURLQuery     = `DELETE FROM urls_alias WHERE alias = $1`
-	updateURLQuery     = `UPDATE urls_alias SET url = $1 WHERE alias = $2 RETURNING url`
+	insertAliasQuery    = `INSERT INTO urls_alias(url, alias) VALUES($1, $2) RETURNING ID`
+	selectURLItemQuery  = `SELECT ID, url, alias FROM urls_alias WHERE alias = $1`
+	deleteURLQuery      = `DELETE FROM urls_alias WHERE alias = $1`
+	updateURLQuery      = `UPDATE urls_alias SET url = $1 WHERE alias = $2 RETURNING url`
+	insertPopAliasQuery = `INSERT INTO most_popular_aliasses(alias, count_of_req) VALUES($1, $2)`
 )
 
 func (conn Postgres) SaveAlias(ctx context.Context, url, alias string) (id int, err error) {
@@ -183,4 +184,17 @@ func (conn Postgres) UpdateURL(ctx context.Context, newURL, alias string) (url s
 	}
 
 	return url, nil
+}
+
+func (p Postgres) SendPopAlias(ctx context.Context, alias string, countOfReq int) error {
+	const op = "internal/repository/postgres/urls.go/SendPopAlias"
+
+	rows, err := p.pool.Query(ctx, insertPopAliasQuery, alias, countOfReq)
+
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	rows.Close()
+
+	return nil
 }

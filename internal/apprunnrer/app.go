@@ -103,7 +103,7 @@ func (app App) Run() {
 	}
 	closer.Add(rateLimiter)
 
-	server, err := httpserver.New(ctx, cfg.HTTPServer, urlService, logger, userService, rateLimiter)
+	server, err := httpserver.New(ctx, cfg.HTTPServer, urlService, logger, userService, rateLimiter, ctx)
 
 	if err != nil {
 		logger.Error("server init", slog.String("error", err.Error()))

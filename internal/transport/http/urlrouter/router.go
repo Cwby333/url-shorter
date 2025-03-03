@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/Cwby333/url-shorter/internal/generalerrors"
 	"github.com/Cwby333/url-shorter/internal/logger"
@@ -14,7 +15,12 @@ import (
 	"github.com/Cwby333/url-shorter/internal/transport/http/middlewares/recovermiddle"
 	"github.com/Cwby333/url-shorter/internal/transport/http/middlewares/requestid"
 	"github.com/Cwby333/url-shorter/internal/transport/http/ratelimiter"
+	"github.com/Cwby333/url-shorter/internal/transport/http/urlrouter/popaliases"
 	"github.com/go-playground/validator/v10"
+)
+
+const (
+	defaultTimeSendPopAlias = time.Duration(time.Second * 20)
 )
 
 type URLService interface {
@@ -22,9 +28,12 @@ type URLService interface {
 	GetURL(ctx context.Context, alias string) (string, error)
 	DeleteURL(ctx context.Context, alias string) error
 	UpdateURL(ctx context.Context, alias, newURL string) error
+	SendPopAlias(ctx context.Context, alias string, countOfReq int) error
 }
 
 type Router struct {
+	mainCtx context.Context
+
 	mu         *sync.RWMutex
 	urlService URLService
 	limiter    ratelimiter.Limiter
@@ -33,9 +42,11 @@ type Router struct {
 	validator  *validator.Validate
 
 	sliceForRandAlias []rune
+
+	popAlias popaliases.PopAlias
 }
 
-func New(service URLService, logger logger.Logger, limiter ratelimiter.Limiter) (*Router, error) {
+func New(service URLService, logger logger.Logger, limiter ratelimiter.Limiter, mainCtx context.Context) (*Router, error) {
 	const op = "internal/transport/httptransport/urlrouter/New"
 
 	if service == (URLService)(nil) {
@@ -47,6 +58,7 @@ func New(service URLService, logger logger.Logger, limiter ratelimiter.Limiter) 
 	data := []rune("QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm1234567890")
 
 	return &Router{
+		mainCtx:           mainCtx,
 		mu:                &sync.RWMutex{},
 		urlService:        service,
 		limiter:           limiter,
@@ -54,6 +66,7 @@ func New(service URLService, logger logger.Logger, limiter ratelimiter.Limiter) 
 		sliceForRandAlias: data,
 		validator:         validator.New(validator.WithRequiredStructEnabled()),
 		Router:            http.NewServeMux(),
+		popAlias:          popaliases.New(defaultTimeSendPopAlias),
 	}, nil
 }
 
@@ -65,4 +78,6 @@ func (router *Router) Run() {
 	router.Router.Handle("DELETE /delete", recovermiddle.New(requestid.New(router.logger.Logger)(logging.New(jwtmiddle.NewAccess(limitermidde.New(router.limiter)(http.HandlerFunc(router.Delete)))))))
 
 	router.Router.Handle("PUT /update", recovermiddle.New(requestid.New(router.logger.Logger)(logging.New(jwtmiddle.NewAccess(limitermidde.New(router.limiter)(http.HandlerFunc(router.UpdateURL)))))))
+
+	router.StartProcessPopAlias()
 }

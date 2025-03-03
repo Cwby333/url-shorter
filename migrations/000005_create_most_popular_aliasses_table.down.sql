@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS most_popular_aliasses;
