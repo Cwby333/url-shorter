@@ -32,7 +32,11 @@ func Connect(ctx context.Context, cfg config.Database) (Postgres, error) {
 		return Postgres{}, fmt.Errorf("%s: %w", op, err)
 	}
 
-	c, _ := pgxpool.ParseConfig(dsn)
+	c, err := pgxpool.ParseConfig(dsn)
+
+	if err != nil {
+		return Postgres{}, fmt.Errorf("%s: %w", op, err)
+	}
 
 	pool, err := pgxpool.NewWithConfig(ctx, c)
 

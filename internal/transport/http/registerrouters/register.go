@@ -1,6 +1,7 @@
 package registerrouters
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -10,12 +11,12 @@ import (
 	"github.com/Cwby333/url-shorter/internal/transport/http/usersrouter"
 )
 
-func New(urlService urlrouter.URLService, logger logger.Logger, usersService usersrouter.UsersService, limiter ratelimiter.Limiter) (*http.ServeMux, error) {
+func New(urlService urlrouter.URLService, logger logger.Logger, usersService usersrouter.UsersService, limiter ratelimiter.Limiter, mainCtx context.Context) (*http.ServeMux, error) {
 	const op = "internal/transports/httptransport/registerrouters/register.go/Register"
 
 	mux := http.NewServeMux()
 
-	routerURLS, err := urlrouter.New(urlService, logger, limiter)
+	routerURLS, err := urlrouter.New(urlService, logger, limiter, mainCtx)
 
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)

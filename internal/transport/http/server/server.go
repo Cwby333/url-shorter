@@ -19,10 +19,10 @@ type Server struct {
 	Server *http.Server
 }
 
-func New(ctx context.Context, cfg config.HTTPServer, urlService urlrouter.URLService, logger logger.Logger, userService usersrouter.UsersService, limiter ratelimiter.Limiter) (Server, error) {
+func New(ctx context.Context, cfg config.HTTPServer, urlService urlrouter.URLService, logger logger.Logger, userService usersrouter.UsersService, limiter ratelimiter.Limiter, mainCtx context.Context) (Server, error) {
 	const op = "transport/http/httpserver/New"
 
-	mux, err := registerrouters.New(urlService, logger, userService, limiter)
+	mux, err := registerrouters.New(urlService, logger, userService, limiter, mainCtx)
 
 	if err != nil {
 		return Server{}, fmt.Errorf("%s:%w", op, err)

@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS most_popular_aliasses(id BIGSERIAL PRIMARY KEY, alias TEXT NOT NULL, count_of_req INT NOT NULL);
