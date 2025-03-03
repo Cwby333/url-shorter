@@ -13,6 +13,7 @@ import (
 	"github.com/Cwby333/url-shorter/internal/transport/http/middlewares/jwtmiddle"
 	"github.com/Cwby333/url-shorter/internal/transport/http/middlewares/limitermidde"
 	"github.com/Cwby333/url-shorter/internal/transport/http/middlewares/logging"
+	"github.com/Cwby333/url-shorter/internal/transport/http/middlewares/recovermiddle"
 	"github.com/Cwby333/url-shorter/internal/transport/http/middlewares/requestid"
 	"github.com/Cwby333/url-shorter/internal/transport/http/ratelimiter"
 	"github.com/go-playground/validator/v10"
@@ -63,13 +64,13 @@ func New(service UsersService, logger *slog.Logger, limiter ratelimiter.Limiter)
 }
 
 func (router Router) Run() {
-	router.Router.Handle("POST /create", requestid.New(router.logger)(logging.New(limitermidde.New(router.limiter)(http.HandlerFunc(router.Register)))))
+	router.Router.Handle("POST /create", recovermiddle.New(requestid.New(router.logger)(logging.New(limitermidde.New(router.limiter)(http.HandlerFunc(router.Register))))))
 
-	router.Router.Handle("POST /login", requestid.New(router.logger)(logging.New(limitermidde.New(router.limiter)(http.HandlerFunc(router.Login)))))
+	router.Router.Handle("POST /login", recovermiddle.New(requestid.New(router.logger)(logging.New(limitermidde.New(router.limiter)(http.HandlerFunc(router.Login))))))
 
-	router.Router.Handle("POST /logout", requestid.New(router.logger)(logging.New(jwtmiddle.NewRefresh(limitermidde.New(router.limiter)(http.HandlerFunc(router.Logout))))))
+	router.Router.Handle("POST /logout", recovermiddle.New(requestid.New(router.logger)(logging.New(jwtmiddle.NewRefresh(limitermidde.New(router.limiter)(http.HandlerFunc(router.Logout)))))))
 
-	router.Router.Handle("POST /refresh", requestid.New(router.logger)(logging.New(jwtmiddle.NewRefresh(limitermidde.New(router.limiter)(http.HandlerFunc(router.RefreshTokens))))))
+	router.Router.Handle("POST /refresh", recovermiddle.New(requestid.New(router.logger)(logging.New(jwtmiddle.NewRefresh(limitermidde.New(router.limiter)(http.HandlerFunc(router.RefreshTokens)))))))
 
-	router.Router.Handle("PUT /update", requestid.New(router.logger)(logging.New(limitermidde.New(router.limiter)(http.HandlerFunc(router.Update)))))
+	router.Router.Handle("PUT /update", recovermiddle.New(requestid.New(router.logger)(logging.New(limitermidde.New(router.limiter)(http.HandlerFunc(router.Update))))))
 }

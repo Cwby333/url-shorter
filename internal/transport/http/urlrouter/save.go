@@ -55,6 +55,7 @@ func (router *Router) Save(w http.ResponseWriter, r *http.Request) {
 	err := typeasserterror.Check(ok, w, slog.Default())
 
 	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 

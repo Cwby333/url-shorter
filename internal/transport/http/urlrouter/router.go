@@ -11,6 +11,7 @@ import (
 	"github.com/Cwby333/url-shorter/internal/transport/http/middlewares/jwtmiddle"
 	"github.com/Cwby333/url-shorter/internal/transport/http/middlewares/limitermidde"
 	"github.com/Cwby333/url-shorter/internal/transport/http/middlewares/logging"
+	"github.com/Cwby333/url-shorter/internal/transport/http/middlewares/recovermiddle"
 	"github.com/Cwby333/url-shorter/internal/transport/http/middlewares/requestid"
 	"github.com/Cwby333/url-shorter/internal/transport/http/ratelimiter"
 	"github.com/go-playground/validator/v10"
@@ -57,8 +58,11 @@ func New(service URLService, logger logger.Logger, limiter ratelimiter.Limiter) 
 }
 
 func (router *Router) Run() {
-	router.Router.Handle("dataPOST /create", requestid.New(router.logger.Logger)(logging.New(jwtmiddle.NewAccess(limitermidde.New(router.limiter)(http.HandlerFunc(router.Save))))))
-	router.Router.Handle("GET /get", requestid.New(router.logger.Logger)(logging.New(limitermidde.New(router.limiter)(http.HandlerFunc(router.Get)))))
-	router.Router.Handle("DELETE /delete", requestid.New(router.logger.Logger)(logging.New(jwtmiddle.NewAccess(limitermidde.New(router.limiter)(http.HandlerFunc(router.Delete))))))
-	router.Router.Handle("PUT /update", requestid.New(router.logger.Logger)(logging.New(jwtmiddle.NewAccess(limitermidde.New(router.limiter)(http.HandlerFunc(router.UpdateURL))))))
+	router.Router.Handle("POST /create", recovermiddle.New(requestid.New(router.logger.Logger)(logging.New(jwtmiddle.NewAccess(limitermidde.New(router.limiter)(http.HandlerFunc(router.Save)))))))
+
+	router.Router.Handle("GET /get", recovermiddle.New(requestid.New(router.logger.Logger)(logging.New(limitermidde.New(router.limiter)(http.HandlerFunc(router.Get))))))
+
+	router.Router.Handle("DELETE /delete", recovermiddle.New(requestid.New(router.logger.Logger)(logging.New(jwtmiddle.NewAccess(limitermidde.New(router.limiter)(http.HandlerFunc(router.Delete)))))))
+
+	router.Router.Handle("PUT /update", recovermiddle.New(requestid.New(router.logger.Logger)(logging.New(jwtmiddle.NewAccess(limitermidde.New(router.limiter)(http.HandlerFunc(router.UpdateURL)))))))
 }
